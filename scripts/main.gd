@@ -613,8 +613,9 @@ func show_collection() -> void:
 	reset_grid.columns = 3
 	reset_grid.add_theme_constant_override("h_separation", 6)
 	reset_grid.add_theme_constant_override("v_separation", 6)
-	for reset_kind in ["skin", "trail", "aura", "theme", "victory_fx"]:
-		var reset_title := _v5("RESET AURA") if reset_kind == "aura" else (_collection_reset_title(reset_kind) if reset_kind in ["theme", "victory_fx"] else ("RESET " + reset_kind.to_upper()))
+	for reset_kind_value in ["skin", "trail", "aura", "theme", "victory_fx"]:
+		var reset_kind: String = str(reset_kind_value)
+		var reset_title: String = _v5("RESET AURA") if reset_kind == "aura" else (_collection_reset_title(reset_kind) if reset_kind in ["theme", "victory_fx"] else ("RESET " + reset_kind.to_upper()))
 		var reset_button := _button(Localization.text(reset_title), Callable(self, "_reset_equipped").bind(reset_kind), false, TEXT)
 		reset_button.custom_minimum_size = Vector2(0, 44)
 		reset_button.add_theme_font_size_override("font_size", 11)
