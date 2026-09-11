@@ -2,16 +2,22 @@ extends Control
 
 var save := SaveManager.new()
 var payment: PaymentManager
+var leaderboard: LeaderboardManager
 var screen_root: VBoxContainer
 var current_screen := "menu"
+var current_mode := "campaign"
 var current_level := 1
+var current_run_key := "1"
 var current_maze: Dictionary = {}
+var current_product: Dictionary = {}
+var infinite_round := 1
 var board: MazeBoard
 var hud_label: Label
 var game_started_ms := 0
 var game_active := false
 var payment_status_label: Label
 var purchase_actions: VBoxContainer
+var leaderboard_box: VBoxContainer
 var audio_move: AudioStreamPlayer
 var audio_orb: AudioStreamPlayer
 var audio_win: AudioStreamPlayer
@@ -21,10 +27,13 @@ const MUTED := Color("91a8c7")
 const CYAN := Color("58e7ff")
 const PINK := Color("ff5fce")
 const GOLD := Color("ffd166")
+const GREEN := Color("52ff9a")
+const DANGER := Color("ff718d")
 
 func _ready() -> void:
 	set_process(true)
 	save.load_data()
+	Localization.configure(save.language_override)
 	_build_shell()
 	_build_audio()
 	payment = PaymentManager.new()
@@ -33,12 +42,24 @@ func _ready() -> void:
 	payment.invoice_ready.connect(_on_invoice_ready)
 	payment.payment_verified.connect(_on_payment_verified)
 	payment.payment_error.connect(_on_payment_error)
+	leaderboard = LeaderboardManager.new()
+	add_child(leaderboard)
+	leaderboard.leaderboard_ready.connect(_on_leaderboard_ready)
+	leaderboard.leaderboard_error.connect(_on_leaderboard_error)
 	show_menu()
 
 func _process(_delta: float) -> void:
 	if game_active and hud_label != null and board != null:
 		var elapsed := (Time.get_ticks_msec() - game_started_ms) / 1000.0
-		hud_label.text = "MOV %d   ·   %.1fs   ·   ORB %d/3" % [board.moves, elapsed, board.collected.size()]
+		var key_text := " · 🔑" if bool(current_maze.get("requires_key", false)) and board.has_key else ""
+		if current_mode == "infinite":
+			var move_limit := int(ceil(float(current_maze.get("shortest", 1)) * 2.15))
+			hud_label.text = Localization.f("hud_infinite", [board.moves, move_limit, elapsed, board.collected.size(), key_text])
+			if board.moves > move_limit:
+				game_active = false
+				show_infinite_failed()
+		else:
+			hud_label.text = Localization.f("hud", [board.moves, elapsed, board.collected.size(), key_text])
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
@@ -52,17 +73,15 @@ func _build_shell() -> void:
 	var backdrop := Backdrop.new()
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(backdrop)
-
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 24)
-	margin.add_theme_constant_override("margin_right", 24)
-	margin.add_theme_constant_override("margin_top", 28)
-	margin.add_theme_constant_override("margin_bottom", 26)
+	margin.add_theme_constant_override("margin_left", 22)
+	margin.add_theme_constant_override("margin_right", 22)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_bottom", 22)
 	add_child(margin)
-
 	screen_root = VBoxContainer.new()
-	screen_root.add_theme_constant_override("separation", 16)
+	screen_root.add_theme_constant_override("separation", 14)
 	margin.add_child(screen_root)
 
 func _build_audio() -> void:
@@ -83,197 +102,402 @@ func show_menu() -> void:
 	current_screen = "menu"
 	game_active = false
 	_clear_screen()
-	_spacer(35)
-	var badge := _label("⚡  BITCOIN LIGHTNING MAZE  ⚡", 17, GOLD)
+	_spacer(16)
+	var badge := _label("⚡  LIGHTNING ARCADE  ·  SEASON 01", 15, GOLD)
 	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	screen_root.add_child(badge)
-	var title := _label("SATOSHI\nMAZE", 64, TEXT)
+	var title := _label("SATOSHI\nMAZE", 59, TEXT)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_color_override("font_shadow_color", Color(CYAN, 0.5))
+	title.add_theme_color_override("font_shadow_color", Color(CYAN, 0.45))
 	title.add_theme_constant_override("shadow_offset_x", 3)
 	title.add_theme_constant_override("shadow_offset_y", 3)
 	screen_root.add_child(title)
-	var subtitle := _label("Escapa. Colecciona energía. Domina 100 laberintos.", 20, MUTED)
+	var subtitle := _label("100 laberintos · retos globales · Ghost Run · colección premium", 17, MUTED)
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	screen_root.add_child(subtitle)
-	_spacer(28)
-	screen_root.add_child(_button("JUGAR", func(): show_levels(), true, CYAN))
-	screen_root.add_child(_button("CONTINUAR NIVEL %d" % _suggest_level(), func(): _select_level(_suggest_level()), true, PINK))
+	var summary := _label(Localization.f("menu_summary", [save.total_stars, save.daily_streak, save.infinite_best_round]), 17, TEXT)
+	summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	screen_root.add_child(summary)
+	_spacer(8)
+	screen_root.add_child(_button("CAMPAÑA · 100 LABERINTOS", func(): show_levels(), true, CYAN))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.add_child(_button("DAILY", func(): show_daily(), false, GOLD))
+	row.add_child(_button("INFINITE", func(): start_infinite(1), false, PINK))
+	screen_root.add_child(row)
+	screen_root.add_child(_button("TIENDA · SKINS · TRAILS · TEMAS", func(): show_store(), true, GOLD))
+	var row2 := HBoxContainer.new()
+	row2.add_theme_constant_override("separation", 10)
+	row2.add_child(_button("COLECCIÓN", func(): show_collection(), false, CYAN))
+	row2.add_child(_button("ESTADÍSTICAS", func(): show_stats(), false, TEXT))
+	screen_root.add_child(row2)
 	screen_root.add_child(_button("CÓMO JUGAR", func(): show_help(), false, TEXT))
-	_spacer(18)
-	var stats := _label("★ %d estrellas   ·   3 gratis   ·   niveles 4–100: %d sats c/u" % [save.total_stars, AppConfig.PRICE_SATS], 17, MUTED)
-	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	screen_root.add_child(stats)
-	var addr := _label("Pagos: " + AppConfig.PAYMENT_ADDRESS, 15, Color(CYAN, 0.8))
-	addr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	screen_root.add_child(addr)
+	screen_root.add_child(_button("AJUSTES", func(): show_settings(), false, MUTED))
 
 func show_levels() -> void:
 	current_screen = "levels"
 	game_active = false
 	_clear_screen()
-	_add_topbar("100 LABERINTOS", func(): show_menu())
-	var info := _label("Los niveles 1–3 son gratis. Cada laberinto premium cuesta solo %d sats." % AppConfig.PRICE_SATS, 17, MUTED)
+	_add_topbar("CAMPAÑA", func(): show_menu())
+	var info := _label("Cada 10 niveles aparece un Boss Maze. Encontrarás niebla, llaves, portales y hielo.", 15, MUTED)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	screen_root.add_child(info)
-
+	if not save.has_product("full_pass"):
+		screen_root.add_child(_button("∞ MAZE PASS · DESBLOQUEAR LOS 100 · 149 SATS", func(): show_purchase_product("full_pass"), false, GOLD))
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	screen_root.add_child(scroll)
 	var grid := GridContainer.new()
 	grid.columns = 4
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 10)
+	grid.add_theme_constant_override("h_separation", 9)
+	grid.add_theme_constant_override("v_separation", 9)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(grid)
-
 	for lvl in range(1, AppConfig.TOTAL_LEVELS + 1):
 		var unlocked := save.is_unlocked(lvl)
-		var label := "%02d\n%s" % [lvl, save.get_best_text(lvl) if unlocked else "⚡ %d sats" % AppConfig.PRICE_SATS]
-		var b := _button(label, Callable(self, "_select_level").bind(lvl), false, CYAN if unlocked else GOLD)
-		b.custom_minimum_size = Vector2(150, 92)
-		b.add_theme_font_size_override("font_size", 15)
+		var stars := save.get_level_stars(lvl)
+		var marker := "★".repeat(stars) + "☆".repeat(3 - stars) if stars > 0 else Localization.text("SIN MARCA")
+		var bottom := marker if unlocked else "⚡ %d SATS" % AppConfig.LEVEL_PRICE_SATS
+		var prefix := "BOSS " if lvl % 10 == 0 else ""
+		var label := "%s%02d\n%s" % [prefix, lvl, bottom]
+		var accent := PINK if lvl % 10 == 0 else (CYAN if unlocked else GOLD)
+		var b := _button(label, Callable(self, "_select_level").bind(lvl), false, accent)
+		b.custom_minimum_size = Vector2(150, 88)
+		b.add_theme_font_size_override("font_size", 13)
 		grid.add_child(b)
 
-func show_help() -> void:
-	current_screen = "help"
+func show_daily() -> void:
+	current_screen = "daily"
+	game_active = false
 	_clear_screen()
-	_add_topbar("CÓMO JUGAR", func(): show_menu())
-	var card := VBoxContainer.new()
-	card.add_theme_constant_override("separation", 18)
-	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	screen_root.add_child(card)
-	for item in [
-		["DESLIZA O USA LAS FLECHAS", "Mueve la esfera por el laberinto con swipe, teclado o el pad táctil."],
-		["RECOGE 3 ORBES", "No son obligatorios para escapar, pero te dan la tercera estrella del nivel."],
-		["BUSCA LA META", "El diamante luminoso marca la salida. Menos movimientos = mejor puntuación."],
-		["MICROPAGOS LIGHTNING", "Los niveles 1–3 son gratuitos. Los demás cuestan 2 sats y se pagan a %s." % AppConfig.PAYMENT_ADDRESS],
-	]:
-		var p := PanelContainer.new()
-		p.add_theme_stylebox_override("panel", _panel(Color("101a35"), Color(CYAN, 0.25), 18))
-		var m := MarginContainer.new()
-		m.add_theme_constant_override("margin_left", 18); m.add_theme_constant_override("margin_right", 18)
-		m.add_theme_constant_override("margin_top", 16); m.add_theme_constant_override("margin_bottom", 16)
-		p.add_child(m)
-		var v := VBoxContainer.new(); v.add_theme_constant_override("separation", 7); m.add_child(v)
-		v.add_child(_label(item[0], 20, CYAN))
-		var d := _label(item[1], 17, TEXT); d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; v.add_child(d)
-		card.add_child(p)
+	_add_topbar("GLOBAL CHALLENGES", func(): show_menu())
+	var daily := ChallengeManager.daily_maze()
+	var daily_card := _card("DAILY MAZE", Localization.text("Mismo laberinto para todos hoy.") + "\n" + ChallengeManager.modifier_text(daily), GOLD)
+	screen_root.add_child(daily_card)
+	var daily_best := _label(Localization.f("daily_best", [save.get_best_text(ChallengeManager.daily_key()), save.daily_streak]), 16, MUTED)
+	daily_best.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	screen_root.add_child(daily_best)
+	screen_root.add_child(_button("JUGAR DAILY", func(): start_daily(), true, GOLD))
+	_spacer(12)
+	var weekly := ChallengeManager.weekly_maze()
+	screen_root.add_child(_card("WEEKLY SPEEDRUN", Localization.text("Reto técnico semanal. Ghost Run y ranking global.") + "\n" + ChallengeManager.modifier_text(weekly), PINK))
+	var weekly_best := _label(Localization.f("weekly_best", [save.get_best_text(ChallengeManager.weekly_key())]), 16, MUTED)
+	weekly_best.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	screen_root.add_child(weekly_best)
+	screen_root.add_child(_button("JUGAR WEEKLY", func(): start_weekly(), true, PINK))
+	_spacer(10)
+	leaderboard_box = VBoxContainer.new()
+	leaderboard_box.add_theme_constant_override("separation", 6)
+	screen_root.add_child(leaderboard_box)
+	leaderboard_box.add_child(_label("TOP DAILY", 18, CYAN))
+	leaderboard.fetch_leaderboard(ChallengeManager.daily_key())
+
+func start_daily() -> void:
+	_start_maze(ChallengeManager.daily_maze(), AppConfig.DAILY_BASE_LEVEL, ChallengeManager.daily_key(), "daily", "DAILY MAZE")
+
+func start_weekly() -> void:
+	_start_maze(ChallengeManager.weekly_maze(), AppConfig.WEEKLY_BASE_LEVEL, ChallengeManager.weekly_key(), "weekly", "WEEKLY SPEEDRUN")
+
+func start_infinite(round_number: int) -> void:
+	infinite_round = round_number
+	var maze := ChallengeManager.infinite_maze(round_number)
+	var run_key := "infinite_%d_%d" % [ChallengeManager.day_index(), round_number]
+	_start_maze(maze, AppConfig.INFINITE_START_LEVEL + round_number, run_key, "infinite", Localization.f("infinite_run", [round_number]))
 
 func _select_level(level: int) -> void:
 	if save.is_unlocked(level):
 		start_level(level)
 	else:
-		show_purchase(level)
+		show_purchase_product("level_%d" % level)
 
 func start_level(level: int) -> void:
+	_start_maze(MazeGenerator.generate(level), level, str(level), "campaign", Localization.f("maze_number", [level]))
+
+func _start_maze(maze: Dictionary, level_for_palette: int, run_key: String, mode: String, title_text: String) -> void:
 	current_screen = "game"
-	current_level = level
-	current_maze = MazeGenerator.generate(level)
+	current_mode = mode
+	current_level = level_for_palette
+	current_run_key = run_key
+	current_maze = maze
 	_clear_screen()
 	var top := HBoxContainer.new()
-	var back := _button("‹", func(): show_levels(), false, TEXT)
-	back.custom_minimum_size = Vector2(64, 54)
+	var back := _button("‹", func(): _leave_game(), false, TEXT)
+	back.custom_minimum_size = Vector2(62, 52)
 	top.add_child(back)
-	var name := _label("LABERINTO %02d" % level, 24, CYAN); name.size_flags_horizontal = Control.SIZE_EXPAND_FILL; name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; top.add_child(name)
-	var reset := _button("↻", func(): start_level(level), false, GOLD); reset.custom_minimum_size = Vector2(64,54); top.add_child(reset)
+	var name := _label(title_text, 22, CYAN)
+	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	top.add_child(name)
+	var reset := _button("↻", func(): _restart_current(), false, GOLD)
+	reset.custom_minimum_size = Vector2(62,52)
+	top.add_child(reset)
 	screen_root.add_child(top)
-
-	hud_label = _label("MOV 0   ·   0.0s   ·   ORB 0/3", 17, MUTED)
+	var mods := _label(ChallengeManager.modifier_text(maze), 14, GOLD if bool(maze.get("boss", false)) else MUTED)
+	mods.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	screen_root.add_child(mods)
+	hud_label = _label("MOV 0   ·   0.0s   ·   ORB 0/3", 16, MUTED)
 	hud_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	screen_root.add_child(hud_label)
-
 	board = MazeBoard.new()
-	board.custom_minimum_size = Vector2(0, 690)
+	board.custom_minimum_size = Vector2(0, 680)
 	board.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	board.setup(current_maze, level)
+	board.setup(current_maze, current_level, save.equipped, save.get_ghost(current_run_key))
 	board.moved.connect(_on_board_moved)
 	board.orb_collected.connect(func(): _play(audio_orb))
+	board.key_collected.connect(func(): _play(audio_orb))
 	board.goal_reached.connect(_on_goal_reached)
 	screen_root.add_child(board)
-
 	var pad := GridContainer.new()
 	pad.columns = 3
 	pad.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	pad.add_theme_constant_override("h_separation", 10)
-	pad.add_theme_constant_override("v_separation", 8)
-	var empty1 := Control.new(); empty1.custom_minimum_size = Vector2(92, 62); pad.add_child(empty1)
+	pad.add_theme_constant_override("h_separation", 8)
+	pad.add_theme_constant_override("v_separation", 7)
+	var e1 := Control.new(); e1.custom_minimum_size = Vector2(88, 58); pad.add_child(e1)
 	pad.add_child(_dir_button("▲", Vector2i.UP))
-	var empty2 := Control.new(); empty2.custom_minimum_size = Vector2(92, 62); pad.add_child(empty2)
+	var e2 := Control.new(); e2.custom_minimum_size = Vector2(88, 58); pad.add_child(e2)
 	pad.add_child(_dir_button("◀", Vector2i.LEFT))
 	pad.add_child(_dir_button("▼", Vector2i.DOWN))
 	pad.add_child(_dir_button("▶", Vector2i.RIGHT))
 	screen_root.add_child(pad)
-	var tip := _label("También podés deslizar directamente sobre el laberinto", 14, MUTED)
+	var ghost_note := "Ghost Run activo: competís contra tu mejor recorrido." if not save.get_ghost(current_run_key).is_empty() else "Tu mejor recorrido quedará guardado como Ghost Run."
+	var tip := _label(ghost_note, 13, MUTED)
 	tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	screen_root.add_child(tip)
 	game_started_ms = Time.get_ticks_msec()
 	game_active = true
 
-func show_purchase(level: int) -> void:
-	current_screen = "purchase"
-	current_level = level
-	game_active = false
-	if payment != null:
-		payment.stop_polling()
+func _restart_current() -> void:
+	match current_mode:
+		"campaign": start_level(int(current_run_key))
+		"daily": start_daily()
+		"weekly": start_weekly()
+		"infinite": start_infinite(infinite_round)
+
+func _leave_game() -> void:
+	match current_mode:
+		"campaign": show_levels()
+		"daily", "weekly": show_daily()
+		"infinite": show_menu()
+		_: show_menu()
+
+func show_infinite_failed() -> void:
+	current_screen = "result"
 	_clear_screen()
-	_add_topbar("DESBLOQUEAR %02d" % level, func(): show_levels())
-	_spacer(25)
-	var bolt := _label("⚡", 92, GOLD); bolt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(bolt)
-	var title := _label("2 SATS", 54, TEXT); title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(title)
-	var desc := _label("Un micropago Lightning desbloquea este laberinto en este dispositivo.", 19, MUTED)
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(desc)
-	var addr := _label(AppConfig.PAYMENT_ADDRESS, 20, CYAN); addr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(addr)
+	_spacer(75)
+	var icon := _label("×", 86, DANGER); icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(icon)
+	var title := _label("RACHA TERMINADA", 34, TEXT); title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(title)
+	var reached := maxi(infinite_round - 1, 0)
+	var info := _label(Localization.f("infinite_failed", [reached, save.infinite_best_round]), 18, MUTED); info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(info)
+	screen_root.add_child(_button("NUEVA RACHA", func(): start_infinite(1), true, PINK))
+	screen_root.add_child(_button("MENÚ", func(): show_menu(), false, TEXT))
 
-	payment_status_label = _label("Tocá el botón para generar un invoice de exactamente 2 sats.", 17, TEXT)
-	payment_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	payment_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	screen_root.add_child(payment_status_label)
-	purchase_actions = VBoxContainer.new(); purchase_actions.add_theme_constant_override("separation", 10); screen_root.add_child(purchase_actions)
-	purchase_actions.add_child(_button("PAGAR 2 SATS", func(): payment.start_purchase(level), true, GOLD))
-	var note := _label("El APK no contiene claves privadas ni credenciales de tu wallet.", 14, MUTED)
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; screen_root.add_child(note)
+func show_store() -> void:
+	current_screen = "store"
+	game_active = false
+	_clear_screen()
+	_add_topbar("LIGHTNING STORE", func(): show_menu())
+	var intro := _label("Compras permanentes. Sin loot boxes, sin pay-to-win. Personalizá tu identidad dentro del laberinto.", 15, MUTED)
+	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	intro.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	screen_root.add_child(intro)
+	var local_note := _label("Las compras se guardan en este dispositivo. Sin servidor no hay restauración segura tras borrar la app o cambiar de teléfono.", 13, MUTED)
+	local_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	local_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	screen_root.add_child(local_note)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	screen_root.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 10)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	for product in ProductCatalog.list_store_products():
+		list.add_child(_product_card(product))
+	if not save.purchase_history.is_empty():
+		list.add_child(_label("ÚLTIMAS COMPRAS", 19, CYAN))
+		for purchase in save.purchase_history.slice(0, mini(5, save.purchase_history.size())):
+			var history_product: Dictionary = ProductCatalog.get_product(str(purchase.get("product_id", "")))
+			var history_name: String = str(history_product.get("name", purchase.get("name", "Compra")))
+			list.add_child(_label(Localization.f("purchase_row", [history_name, int(purchase.get("amount_sats", 0))]), 14, MUTED))
 
-func _on_invoice_ready(_invoice: String, verify_url: String) -> void:
-	for c in purchase_actions.get_children(): c.queue_free()
-	purchase_actions.add_child(_button("ABRIR WALLET LIGHTNING", func(): payment.open_wallet(), true, GOLD))
-	purchase_actions.add_child(_button("COPIAR INVOICE", func(): payment.copy_invoice(), false, CYAN))
-	if not verify_url.is_empty():
-		purchase_actions.add_child(_button("COMPROBAR AHORA", func(): payment.check_payment(), false, TEXT))
-	elif AppConfig.ALLOW_MANUAL_PAYMENT_FALLBACK:
-		purchase_actions.add_child(_button("YA PAGUÉ · FALLBACK LOCAL", func(): _manual_unlock(), false, PINK))
-	var warn := _label("Si tu wallet no se abre, copiá el invoice y pegalo manualmente.", 14, MUTED)
-	warn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	purchase_actions.add_child(warn)
-	payment.open_wallet()
+func _product_card(product: Dictionary) -> Control:
+	var product_id := str(product.id)
+	var owned := save.has_product(product_id)
+	if str(product.kind) == "pass": owned = save.has_product("full_pass")
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", _panel(Color("10182f"), Color(product.accent, 0.34), 18))
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 14); margin.add_theme_constant_override("margin_right", 14)
+	margin.add_theme_constant_override("margin_top", 12); margin.add_theme_constant_override("margin_bottom", 12)
+	panel.add_child(margin)
+	var row := HBoxContainer.new(); row.add_theme_constant_override("separation", 12); margin.add_child(row)
+	var icon := _label(str(product.icon), 35, Color(product.accent)); icon.custom_minimum_size = Vector2(48, 0); icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; row.add_child(icon)
+	var copy := VBoxContainer.new(); copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL; row.add_child(copy)
+	copy.add_child(_label(str(product.name), 18, TEXT))
+	var desc := _label(str(product.description), 13, MUTED); desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; copy.add_child(desc)
+	var action: Button
+	if owned:
+		if ProductCatalog.is_cosmetic_kind(str(product.kind)):
+			action = _button("EQUIPAR", Callable(self, "_equip_from_store").bind(product_id), false, GREEN)
+		else:
+			action = _button("ADQUIRIDO", Callable(self, "_noop"), false, GREEN)
+			action.disabled = true
+	else:
+		action = _button("%d SATS" % int(product.price_sats), Callable(self, "show_purchase_product").bind(product_id), false, GOLD)
+	action.custom_minimum_size = Vector2(132, 54)
+	row.add_child(action)
+	return panel
 
-func _on_payment_verified() -> void:
-	save.unlock(current_level)
-	_play(audio_win)
-	show_unlock_success(false)
+func _equip_from_store(product_id: String) -> void:
+	if save.equip_product(product_id):
+		show_collection()
 
-func _manual_unlock() -> void:
-	save.unlock(current_level)
-	show_unlock_success(true)
+func show_collection() -> void:
+	current_screen = "collection"
+	_clear_screen()
+	_add_topbar("MI COLECCIÓN", func(): show_menu())
+	var equipped_text := Localization.f("equipped", [
+		str(save.equipped.get("skin", "default")).replace("skin_", "").to_upper(),
+		str(save.equipped.get("trail", "default")).replace("trail_", "").to_upper(),
+		str(save.equipped.get("theme", "auto")).replace("theme_", "").to_upper(),
+		str(save.equipped.get("victory_fx", "default")).replace("victory_fx_", "").to_upper(),
+	])
+	var eq := _label(equipped_text, 16, CYAN); eq.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(eq)
+	var reset_row := HBoxContainer.new(); reset_row.add_theme_constant_override("separation", 8)
+	reset_row.add_child(_button("RESET SKIN", Callable(self, "_reset_equipped").bind("skin"), false, TEXT))
+	reset_row.add_child(_button("RESET TRAIL", Callable(self, "_reset_equipped").bind("trail"), false, TEXT))
+	screen_root.add_child(reset_row)
+	var scroll := ScrollContainer.new(); scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL; screen_root.add_child(scroll)
+	var list := VBoxContainer.new(); list.add_theme_constant_override("separation", 9); list.size_flags_horizontal = Control.SIZE_EXPAND_FILL; scroll.add_child(list)
+	var owned_count := 0
+	for product in ProductCatalog.list_collection_products():
+		if save.has_product(str(product.id)) and ProductCatalog.is_cosmetic_kind(str(product.kind)):
+			owned_count += 1
+			list.add_child(_product_card(product))
+	if owned_count == 0:
+		list.add_child(_card("TU COLECCIÓN EMPIEZA ACÁ", "Las skins y efectos premium aparecerán en esta vitrina.", CYAN))
+		list.add_child(_button("EXPLORAR TIENDA", func(): show_store(), true, GOLD))
 
-func show_unlock_success(was_manual: bool) -> void:
+func _reset_equipped(kind: String) -> void:
+	save.reset_equipped(kind)
+	show_collection()
+
+func show_stats() -> void:
+	current_screen = "stats"
+	_clear_screen()
+	_add_topbar("PERFIL & ESTADÍSTICAS", func(): show_menu())
+	var alias_name := "RUNNER-" + save.install_id.substr(0, 6).to_upper()
+	screen_root.add_child(_card(alias_name, "Tu identidad anónima para rankings globales.", CYAN))
+	var basic := Localization.f("full_stats", [save.total_completions, save.total_stars, save.daily_streak, save.infinite_best_round])
+	var basic_label := _label(basic, 20, TEXT); basic_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(basic_label)
+	if save.has_product("pro_stats"):
+		_spacer(6)
+		var pro := Localization.f("pro_stats", [save.average_efficiency(), save.total_moves, save.total_seconds / 60.0, save.total_orbs, save.achievements.size()])
+		var pro_label := _label(pro, 18, GREEN); pro_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(pro_label)
+	else:
+		screen_root.add_child(_card("PRO STATS", "Desbloquea eficiencia global, récords, actividad y métricas avanzadas.", GOLD))
+		screen_root.add_child(_button("DESBLOQUEAR PRO STATS · 29 SATS", func(): show_purchase_product("pro_stats"), true, GOLD))
+
+func show_help() -> void:
+	current_screen = "help"
+	_clear_screen()
+	_add_topbar("CÓMO JUGAR", func(): show_menu())
+	var scroll := ScrollContainer.new(); scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL; screen_root.add_child(scroll)
+	var list := VBoxContainer.new(); list.add_theme_constant_override("separation", 10); list.size_flags_horizontal = Control.SIZE_EXPAND_FILL; scroll.add_child(list)
+	for item in [
+		["DOMINÁ EL LABERINTO", "Deslizá o usá el pad. Menos movimientos aumenta tu eficiencia y mejora el Ghost Run."],
+		["3 ESTRELLAS", "Completá, resolvé cerca de la ruta óptima y recogé los tres orbes."],
+		["MODIFICADORES", "Niebla limita la visión. Las llaves abren la meta. Los portales cambian tu posición y el hielo te desliza."],
+		["GHOST RUN", "Tu mejor recorrido queda como un fantasma visual para competir contra vos mismo."],
+		["DAILY & WEEKLY", "Desafíos de semilla global para comparar tiempos y movimientos en rankings."],
+		["INFINITE", "Encadená laberintos cada vez más exigentes y buscá tu mejor racha."],
+		["LIGHTNING STORE", "Los pagos compran desbloqueos y cosméticos permanentes. No venden soluciones ni ventajas competitivas."],
+	]:
+		list.add_child(_card(item[0], item[1], CYAN))
+
+
+func show_settings() -> void:
+	current_screen = "settings"
+	game_active = false
+	_clear_screen()
+	_add_topbar("AJUSTES", func(): show_menu())
+	var detected: String = Localization.current_language_name()
+	var current_mode_text: String = (Localization.text("AUTOMÁTICO") + " · " + detected) if save.language_override == "auto" else detected
+	screen_root.add_child(_card(Localization.text("IDIOMA"), Localization.text("IDIOMA DEL DISPOSITIVO") + ": " + current_mode_text, CYAN))
+	screen_root.add_child(_button(Localization.text("AUTOMÁTICO") + " · " + str(Localization.LANGUAGE_NAMES[Localization.detect_device_language()]), Callable(self, "_set_language").bind("auto"), true, GOLD if save.language_override == "auto" else TEXT))
+	for code in Localization.SUPPORTED_LANGUAGES:
+		var accent: Color = GREEN if save.language_override == code else CYAN
+		screen_root.add_child(_button(str(Localization.LANGUAGE_NAMES[code]), Callable(self, "_set_language").bind(code), false, accent))
+
+func _set_language(code: String) -> void:
+	save.set_language_override(code)
+	Localization.configure(code)
+	show_settings()
+
+func show_purchase_product(product_id: String) -> void:
+	current_product = ProductCatalog.get_product(product_id)
+	if current_product.is_empty():
+		return
+	current_screen = "purchase"
+	game_active = false
 	payment.stop_polling()
 	_clear_screen()
-	_spacer(120)
-	var bolt := _label("⚡", 100, GOLD); bolt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(bolt)
-	var t := _label("¡DESBLOQUEADO!", 42, TEXT); t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(t)
-	var s := _label("Nivel %02d listo para jugar.%s" % [current_level, "\nModo fallback local: úsalo solo para pruebas." if was_manual else ""], 18, MUTED)
+	_add_topbar("COMPRA LIGHTNING", func(): _purchase_back())
+	_spacer(24)
+	var icon := _label(str(current_product.icon), 82, Color(current_product.accent)); icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(icon)
+	var title := _label(str(current_product.name), 31, TEXT); title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(title)
+	var price := _label("%d SATS" % int(current_product.price_sats), 45, GOLD); price.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(price)
+	var desc := _label(str(current_product.description), 17, MUTED); desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; screen_root.add_child(desc)
+	payment_status_label = _label("Pago Lightning directo. Solo se habilita contenido después de una verificación criptográfica del invoice.", 15, TEXT)
+	payment_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; payment_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; screen_root.add_child(payment_status_label)
+	purchase_actions = VBoxContainer.new(); purchase_actions.add_theme_constant_override("separation", 9); screen_root.add_child(purchase_actions)
+	purchase_actions.add_child(_button("GENERAR INVOICE", func(): payment.start_purchase(str(current_product.get("id", ""))), true, GOLD))
+	var note := _label("No pagues si el proveedor no ofrece verificación automática. El juego bloqueará el cobro antes de abrir tu wallet.", 13, MUTED)
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; screen_root.add_child(note)
+
+func _purchase_back() -> void:
+	if str(current_product.get("kind", "")) == "level": show_levels()
+	else: show_store()
+
+func _on_invoice_ready(_invoice: String, amount: int, _expires_at: int) -> void:
+	for c in purchase_actions.get_children(): c.queue_free()
+	purchase_actions.add_child(_button(Localization.f("open_wallet", [amount]), func(): payment.open_wallet(), true, GOLD))
+	purchase_actions.add_child(_button("COPIAR INVOICE", func(): payment.copy_invoice(), false, CYAN))
+	purchase_actions.add_child(_button("COMPROBAR AHORA", func(): payment.check_payment(), false, TEXT))
+	payment.open_wallet()
+
+func _on_payment_verified(product_id: String, payment_id: String, amount: int) -> void:
+	save.grant_product(product_id, payment_id, amount)
+	var product := ProductCatalog.get_product(product_id)
+	if ProductCatalog.is_cosmetic_kind(str(product.get("kind", ""))):
+		save.equip_product(product_id)
+	_play(audio_win)
+	show_purchase_success(product)
+
+func show_purchase_success(product: Dictionary) -> void:
+	payment.stop_polling()
+	_clear_screen()
+	_spacer(95)
+	var bolt := _label("✓", 92, GREEN); bolt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(bolt)
+	var t := _label("COMPRA CONFIRMADA", 34, TEXT); t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(t)
+	var s := _label(Localization.f("purchase_success", [str(product.get("name", "Contenido"))]), 17, MUTED)
 	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(s)
-	screen_root.add_child(_button("JUGAR AHORA", func(): start_level(current_level), true, CYAN))
+	if str(product.get("kind", "")) == "level":
+		var unlocked_level := int(product.get("level", 1))
+		screen_root.add_child(_button("JUGAR AHORA", Callable(self, "start_level").bind(unlocked_level), true, CYAN))
+	else:
+		screen_root.add_child(_button("VER COLECCIÓN", func(): show_collection(), true, CYAN))
+		screen_root.add_child(_button("VOLVER A LA TIENDA", func(): show_store(), false, TEXT))
 
 func _on_payment_status(text: String) -> void:
 	if payment_status_label != null and is_instance_valid(payment_status_label):
-		payment_status_label.text = text
+		payment_status_label.text = Localization.text(text)
 
 func _on_payment_error(text: String) -> void:
-	_on_payment_status("Error: " + text)
+	_on_payment_status("⚠ " + text)
 
 func _on_board_moved(_moves: int, _orbs: int) -> void:
 	_play(audio_move)
@@ -283,80 +507,124 @@ func _on_goal_reached(moves: int, orbs: int) -> void:
 		return
 	game_active = false
 	var elapsed := (Time.get_ticks_msec() - game_started_ms) / 1000.0
-	var shortest: int = current_maze.shortest
+	var shortest: int = int(current_maze.shortest)
+	var efficiency := clampf(float(shortest) / maxf(float(moves), 1.0), 0.0, 1.0) * 100.0
 	var stars := 1
-	if moves <= int(ceil(shortest * 1.35)):
-		stars += 1
-	if orbs == 3:
-		stars += 1
-	save.record_result(current_level, moves, elapsed, stars)
+	if moves <= int(ceil(float(shortest) * 1.25)): stars += 1
+	if orbs == 3: stars += 1
+	var perfect := board.bump_count == 0
+	var result := save.record_result(current_run_key, moves, elapsed, stars, shortest, orbs, board.get_run_path(), current_mode == "daily", current_mode == "campaign")
+	if current_mode in ["daily", "weekly"]:
+		save.record_challenge(current_run_key, moves, elapsed, efficiency)
+		leaderboard.submit_score(current_run_key, "RUNNER-" + save.install_id.substr(0, 6).to_upper(), save.install_id, moves, elapsed, efficiency, board.get_run_path())
+	if current_mode == "infinite":
+		save.record_infinite_round(infinite_round)
 	_play(audio_win)
-	show_result(moves, elapsed, orbs, stars, shortest)
+	show_result(moves, elapsed, orbs, stars, shortest, perfect, bool(result.improved))
 
-func show_result(moves: int, elapsed: float, orbs: int, stars: int, shortest: int) -> void:
+func show_result(moves: int, elapsed: float, orbs: int, stars: int, shortest: int, perfect: bool, improved: bool) -> void:
 	current_screen = "result"
 	_clear_screen()
-	_spacer(50)
-	var crown := _label("✦", 92, GOLD); crown.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(crown)
-	var title := _label("¡ESCAPASTE!", 43, TEXT); title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(title)
+	_spacer(30)
+	var victory_fx := str(save.equipped.get("victory_fx", "default"))
+	var crown_text := "✦  ✹  ✦" if victory_fx == "victory_fx_supernova" else "✦"
+	var crown := _label(crown_text, 76, GOLD); crown.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(crown)
+	var title := _label("¡ESCAPASTE!", 37, TEXT); title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(title)
 	var star_text := "★".repeat(stars) + "☆".repeat(3-stars)
-	var star_label := _label(star_text, 48, GOLD); star_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(star_label)
-	var stat := _label("%d movimientos   ·   %.1f s\nRuta ideal: %d   ·   Orbes: %d/3" % [moves, elapsed, shortest, orbs], 19, MUTED)
-	stat.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(stat)
-	_spacer(20)
-	if current_level < AppConfig.TOTAL_LEVELS:
+	var star_label := _label(star_text, 43, GOLD); star_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(star_label)
+	var efficiency := clampf(float(shortest) / maxf(float(moves), 1.0), 0.0, 1.0) * 100.0
+	var target_time := float(current_maze.get("target_time", float(shortest) * 0.78 + 8.0))
+	var medal := "ORO" if elapsed <= target_time else ("PLATA" if elapsed <= target_time * 1.35 else "BRONCE")
+	var medal_color := GOLD if medal == "ORO" else (CYAN if medal == "PLATA" else Color("d38b5d"))
+	var medal_label := _label(Localization.text("MEDALLA") + " " + Localization.text(medal), 20, medal_color); medal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(medal_label)
+	var badges: Array[String] = []
+	if perfect: badges.append("PERFECT RUN")
+	if improved: badges.append("NUEVO GHOST")
+	if orbs == 3: badges.append("ORB MASTER")
+	if bool(current_maze.get("boss", false)) and elapsed <= float(current_maze.get("target_time", 999999.0)): badges.append("BOSS TIME")
+	var badge_text := " · ".join(badges) if not badges.is_empty() else "RUN COMPLETADO"
+	var badge := _label(badge_text, 15, GREEN if perfect else CYAN); badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(badge)
+	var stat := _label(Localization.f("result_stats", [moves, elapsed, shortest, efficiency, orbs]), 17, MUTED)
+	stat.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; stat.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; screen_root.add_child(stat)
+	_spacer(12)
+	if current_mode == "campaign" and current_level < AppConfig.TOTAL_LEVELS:
 		var next := current_level + 1
-		var text := "SIGUIENTE NIVEL" if save.is_unlocked(next) else "SIGUIENTE · 2 SATS"
-		screen_root.add_child(_button(text, func(): _select_level(next), true, CYAN if save.is_unlocked(next) else GOLD))
-	screen_root.add_child(_button("REPETIR", func(): start_level(current_level), false, PINK))
-	screen_root.add_child(_button("VER 100 NIVELES", func(): show_levels(), false, TEXT))
+		var next_text := Localization.text("SIGUIENTE NIVEL") if save.is_unlocked(next) else Localization.f("next_sats", [AppConfig.LEVEL_PRICE_SATS])
+		screen_root.add_child(_button(next_text, func(): _select_level(next), true, CYAN if save.is_unlocked(next) else GOLD))
+	elif current_mode == "infinite":
+		screen_root.add_child(_button("CONTINUAR · RUN %02d" % (infinite_round + 1), func(): start_infinite(infinite_round + 1), true, PINK))
+	elif current_mode in ["daily", "weekly"]:
+		screen_root.add_child(_button("VER DESAFÍOS & RANKING", func(): show_daily(), true, GOLD))
+	screen_root.add_child(_button("REPETIR · GHOST RUN", func(): _restart_current(), false, PINK))
+	screen_root.add_child(_button("MENÚ", func(): show_menu(), false, TEXT))
+
+func _on_leaderboard_ready(_challenge_key: String, entries: Array) -> void:
+	if leaderboard_box == null or not is_instance_valid(leaderboard_box):
+		return
+	for child in leaderboard_box.get_children(): child.queue_free()
+	leaderboard_box.add_child(_label("TOP DAILY", 18, CYAN))
+	if entries.is_empty():
+		leaderboard_box.add_child(_label("Todavía no hay tiempos publicados.", 14, MUTED))
+		return
+	for i in range(mini(entries.size(), 5)):
+		var e: Dictionary = entries[i]
+		leaderboard_box.add_child(_label(Localization.f("score_row", [i+1, str(e.get("alias", "RUNNER")), float(e.get("seconds", 0.0)), int(e.get("moves", 0))]), 14, TEXT))
+
+func _on_leaderboard_error(message: String) -> void:
+	if leaderboard_box != null and is_instance_valid(leaderboard_box):
+		leaderboard_box.add_child(_label(message, 13, MUTED))
 
 func _dir_button(text: String, dir: Vector2i) -> Button:
 	var cb := func():
 		if board != null:
 			board.move_player(dir)
 	var b := _button(text, cb, false, CYAN)
-	b.custom_minimum_size = Vector2(92, 62)
-	b.add_theme_font_size_override("font_size", 27)
+	b.custom_minimum_size = Vector2(88, 58)
+	b.add_theme_font_size_override("font_size", 25)
 	return b
 
 func _back() -> void:
 	match current_screen:
-		"game", "purchase", "result": show_levels()
-		"levels", "help": show_menu()
+		"game": _leave_game()
+		"levels", "daily", "store", "collection", "stats", "help", "settings": show_menu()
+		"purchase": _purchase_back()
+		"result": show_menu()
 		_: get_tree().quit()
-
-func _suggest_level() -> int:
-	for lvl in range(1, AppConfig.TOTAL_LEVELS + 1):
-		if save.is_unlocked(lvl) and not save.best_moves.has(str(lvl)):
-			return lvl
-	return 1
 
 func _add_topbar(title: String, back_cb: Callable) -> void:
 	var h := HBoxContainer.new()
-	var b := _button("‹", back_cb, false, TEXT); b.custom_minimum_size = Vector2(66, 54); h.add_child(b)
-	var l := _label(title, 28, TEXT); l.size_flags_horizontal = Control.SIZE_EXPAND_FILL; l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; h.add_child(l)
-	var ghost := Control.new(); ghost.custom_minimum_size = Vector2(66, 54); h.add_child(ghost)
+	var b := _button("‹", back_cb, false, TEXT); b.custom_minimum_size = Vector2(62, 52); h.add_child(b)
+	var l := _label(title, 25, TEXT); l.size_flags_horizontal = Control.SIZE_EXPAND_FILL; l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; h.add_child(l)
+	var ghost := Control.new(); ghost.custom_minimum_size = Vector2(62, 52); h.add_child(ghost)
 	screen_root.add_child(h)
 
 func _button(text: String, cb: Callable, big := false, accent := CYAN) -> Button:
 	var b := Button.new()
-	b.text = text
+	b.text = Localization.text(text)
 	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(0, 76 if big else 58)
+	b.custom_minimum_size = Vector2(0, 72 if big else 55)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	b.add_theme_font_size_override("font_size", 22 if big else 18)
+	b.add_theme_font_size_override("font_size", 20 if big else 16)
 	b.add_theme_color_override("font_color", Color("f5fbff"))
 	b.add_theme_color_override("font_hover_color", Color.WHITE)
-	b.add_theme_stylebox_override("normal", _panel(Color("111a34"), Color(accent, 0.45), 17))
-	b.add_theme_stylebox_override("hover", _panel(Color("19254a"), Color(accent, 0.85), 17))
+	b.add_theme_stylebox_override("normal", _panel(Color("111a34"), Color(accent, 0.42), 17))
+	b.add_theme_stylebox_override("hover", _panel(Color("19254a"), Color(accent, 0.82), 17))
 	b.add_theme_stylebox_override("pressed", _panel(Color("0d1328"), accent, 17))
 	b.pressed.connect(cb)
 	return b
 
+func _card(title: String, body: String, accent: Color) -> Control:
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", _panel(Color("10182f"), Color(accent, 0.30), 18))
+	var m := MarginContainer.new(); m.add_theme_constant_override("margin_left", 17); m.add_theme_constant_override("margin_right", 17); m.add_theme_constant_override("margin_top", 14); m.add_theme_constant_override("margin_bottom", 14); panel.add_child(m)
+	var v := VBoxContainer.new(); v.add_theme_constant_override("separation", 6); m.add_child(v)
+	v.add_child(_label(title, 20, accent))
+	var d := _label(body, 15, TEXT); d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; v.add_child(d)
+	return panel
+
 func _label(text: String, size: int, color: Color) -> Label:
 	var l := Label.new()
-	l.text = text
+	l.text = Localization.text(text)
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", color)
 	return l
@@ -381,6 +649,10 @@ func _clear_screen() -> void:
 	hud_label = null
 	payment_status_label = null
 	purchase_actions = null
+	leaderboard_box = null
+
+func _noop() -> void:
+	pass
 
 func _play(player: AudioStreamPlayer) -> void:
 	if player != null:
