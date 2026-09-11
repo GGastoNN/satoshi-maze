@@ -44,6 +44,10 @@ const SPECIAL_THEMES := {
 	"theme_mono": {"bg": Color("07090d"), "floor": Color("11151b"), "wall": Color("f4f7fb"), "accent": Color("58e7ff"), "goal": Color("ffffff")},
 	"theme_matrix": {"bg": Color("020b06"), "floor": Color("07180e"), "wall": Color("52ff9a"), "accent": Color("b7ffcf"), "goal": Color("f7ff58")},
 	"theme_deep": {"bg": Color("050716"), "floor": Color("0b1030"), "wall": Color("8b5cf6"), "accent": Color("84f7ff"), "goal": Color("ffd166")},
+	"theme_arctic": {"bg": Color("071622"), "floor": Color("0d2938"), "wall": Color("d8f7ff"), "accent": Color("78dfff"), "goal": Color("f7fdff")},
+	"theme_lava": {"bg": Color("160604"), "floor": Color("2a0d08"), "wall": Color("ff6b35"), "accent": Color("ffb347"), "goal": Color("ffe66d")},
+	"theme_ocean": {"bg": Color("02111d"), "floor": Color("062638"), "wall": Color("4deeea"), "accent": Color("48bfe3"), "goal": Color("b8ffda")},
+	"theme_synthwave": {"bg": Color("13051f"), "floor": Color("25083d"), "wall": Color("ff4fd8"), "accent": Color("58e7ff"), "goal": Color("ffe66d")},
 }
 
 func setup(new_maze: Dictionary, new_level: int, new_cosmetics: Dictionary, ghost: Dictionary = {}) -> void:
@@ -113,7 +117,7 @@ func _step(dir: Vector2i) -> void:
 		if bool(maze.get("requires_key", false)) and not has_key:
 			_spawn_bump()
 			return
-		_spawn_sparks(55 if bool(maze.get("boss", false)) else 40)
+		_spawn_victory_effect(55 if bool(maze.get("boss", false)) else 40)
 		goal_reached.emit(moves, collected.size())
 
 func _collect_here() -> void:
@@ -261,18 +265,39 @@ func _draw_specials(cell: float) -> void:
 
 func _draw_trail(cell: float) -> void:
 	var trail_id := str(cosmetics.get("trail", "default"))
+	if visual_trail.is_empty():
+		return
 	if trail_id == "trail_lightning" and visual_trail.size() > 1:
 		for i in range(1, visual_trail.size()):
-			var a := float(i) / float(visual_trail.size())
-			draw_line(_cell_center(visual_trail[i-1]), _cell_center(visual_trail[i]), Color(palette.accent, a*0.45), maxf(1.0, cell*0.05), true)
+			var a: float = float(i) / float(visual_trail.size())
+			draw_line(_cell_center(visual_trail[i - 1]), _cell_center(visual_trail[i]), Color(palette.accent, a * 0.45), maxf(1.0, cell * 0.05), true)
+	elif trail_id == "trail_neon" and visual_trail.size() > 1:
+		for i in range(1, visual_trail.size()):
+			var alpha_neon: float = float(i) / float(visual_trail.size())
+			draw_line(_cell_center(visual_trail[i - 1]), _cell_center(visual_trail[i]), Color(palette.accent, alpha_neon * 0.13), maxf(3.0, cell * 0.13), true)
+			draw_line(_cell_center(visual_trail[i - 1]), _cell_center(visual_trail[i]), Color(palette.accent, alpha_neon * 0.60), maxf(1.0, cell * 0.035), true)
+	elif trail_id == "trail_glitch":
+		for i in visual_trail.size():
+			var alpha_glitch: float = float(i + 1) / float(visual_trail.size())
+			var center_glitch: Vector2 = _cell_center(visual_trail[i])
+			var offset_glitch := Vector2(sin(float(i) * 3.1) * cell * 0.10, cos(float(i) * 2.7) * cell * 0.05)
+			draw_rect(Rect2(center_glitch + offset_glitch - Vector2(cell * 0.08, cell * 0.025), Vector2(cell * 0.16, cell * 0.05)), Color(palette.accent, alpha_glitch * 0.42))
 	else:
 		for i in visual_trail.size():
-			var alpha := float(i + 1) / float(visual_trail.size())
-			var radius := cell * (0.055 + alpha*0.055)
+			var alpha: float = float(i + 1) / float(visual_trail.size())
+			var radius: float = cell * (0.055 + alpha * 0.055)
 			if trail_id == "trail_comet": radius *= 1.35
 			if trail_id == "trail_pixels": radius *= 0.75
 			if trail_id == "trail_stars": radius *= 0.62 + 0.35 * sin(float(i) * 2.2)
-			draw_circle(_cell_center(visual_trail[i]), radius, Color(palette.accent, alpha * (0.34 if trail_id == "trail_stars" else 0.24)))
+			if trail_id == "trail_firefly": radius *= 0.55 + 0.50 * absf(sin(pulse * 5.0 + float(i)))
+			var center: Vector2 = _cell_center(visual_trail[i])
+			if trail_id == "trail_orbit":
+				var orbit_angle: float = pulse * 3.0 + float(i) * 1.7
+				var orbit_offset := Vector2.from_angle(orbit_angle) * cell * 0.10
+				draw_circle(center + orbit_offset, radius * 0.62, Color(palette.accent, alpha * 0.44))
+				draw_circle(center - orbit_offset, radius * 0.42, Color(palette.goal, alpha * 0.30))
+			else:
+				draw_circle(center, radius, Color(palette.accent, alpha * (0.40 if trail_id == "trail_firefly" else (0.34 if trail_id == "trail_stars" else 0.24))))
 
 func _draw_walls(origin: Vector2, cell: float, w: int, h: int) -> void:
 	for y in h:
@@ -310,28 +335,55 @@ func _draw_player(cell: float) -> void:
 	elif skin == "skin_plasma": color = Color("ff5fce")
 	elif skin == "skin_emerald": color = Color("4dff9d")
 	elif skin == "skin_void": color = Color("8b5cf6")
+	elif skin == "skin_ruby": color = Color("ff466f")
+	elif skin == "skin_ice": color = Color("9ee7ff")
+	elif skin == "skin_solar": color = Color("ffad33")
+	elif skin == "skin_quantum": color = Color("6de7ff")
 	draw_circle(pp, pr * 2.0, Color(color, 0.10))
 	draw_circle(pp, pr * 1.35, Color(color, 0.22))
 	if skin == "skin_nova":
 		draw_circle(pp, pr, color)
-		draw_arc(pp, pr * 1.18, pulse * 1.7, pulse * 1.7 + PI * 1.4, 20, Color.WHITE, maxf(1.5, pr*0.12), true)
+		draw_arc(pp, pr * 1.18, pulse * 1.7, pulse * 1.7 + PI * 1.4, 20, Color.WHITE, maxf(1.5, pr * 0.12), true)
 	elif skin == "skin_emerald":
-		var pts := PackedVector2Array([pp+Vector2(0,-pr), pp+Vector2(pr,0), pp+Vector2(0,pr), pp+Vector2(-pr,0)])
-		draw_colored_polygon(pts, color)
+		var emerald_points := PackedVector2Array([pp + Vector2(0, -pr), pp + Vector2(pr, 0), pp + Vector2(0, pr), pp + Vector2(-pr, 0)])
+		draw_colored_polygon(emerald_points, color)
 	elif skin == "skin_void":
 		draw_circle(pp, pr, Color("090711"))
-		draw_arc(pp, pr*0.82, 0, TAU, 32, color, maxf(2.0, pr*0.18), true)
+		draw_arc(pp, pr * 0.82, 0, TAU, 32, color, maxf(2.0, pr * 0.18), true)
+	elif skin == "skin_ruby":
+		var ruby_points := PackedVector2Array()
+		for i in 6:
+			ruby_points.append(pp + Vector2.from_angle(-PI * 0.5 + float(i) * TAU / 6.0) * pr)
+		draw_colored_polygon(ruby_points, color)
+		draw_circle(pp, pr * 0.28, Color.WHITE)
+	elif skin == "skin_ice":
+		var ice_points := PackedVector2Array([pp + Vector2(0, -pr * 1.08), pp + Vector2(pr * 0.72, 0), pp + Vector2(0, pr * 1.08), pp + Vector2(-pr * 0.72, 0)])
+		draw_colored_polygon(ice_points, color)
+		draw_line(pp + Vector2(-pr * 0.18, -pr * 0.45), pp + Vector2(pr * 0.18, pr * 0.45), Color.WHITE, maxf(1.2, pr * 0.10), true)
+	elif skin == "skin_solar":
+		draw_circle(pp, pr, color)
+		for i in 8:
+			var ray_angle: float = pulse * 0.7 + float(i) * TAU / 8.0
+			var ray_from: Vector2 = pp + Vector2.from_angle(ray_angle) * pr * 1.08
+			var ray_to: Vector2 = pp + Vector2.from_angle(ray_angle) * pr * 1.42
+			draw_line(ray_from, ray_to, Color(color, 0.85), maxf(1.0, pr * 0.10), true)
+	elif skin == "skin_quantum":
+		draw_circle(pp, pr * 0.72, Color("081321"))
+		draw_circle(pp, pr * 0.28, Color.WHITE)
+		draw_arc(pp, pr * 1.05, pulse * 1.8, pulse * 1.8 + PI * 1.35, 24, color, maxf(1.2, pr * 0.10), true)
+		draw_arc(pp, pr * 0.82, -pulse * 2.2, -pulse * 2.2 + PI * 1.55, 24, Color("a78bfa"), maxf(1.1, pr * 0.09), true)
 	else:
 		draw_circle(pp, pr, color)
-		draw_circle(pp - Vector2(pr*0.28, pr*0.28), pr*0.28, Color.WHITE)
+		draw_circle(pp - Vector2(pr * 0.28, pr * 0.28), pr * 0.28, Color.WHITE)
 	if skin == "skin_btc_gold":
 		var f := ThemeDB.fallback_font
-		draw_string(f, pp + Vector2(-pr*0.44, pr*0.40), "₿", HORIZONTAL_ALIGNMENT_LEFT, -1, int(maxf(10.0, pr*1.35)), Color("3b2500"))
+		draw_string(f, pp + Vector2(-pr * 0.44, pr * 0.40), "₿", HORIZONTAL_ALIGNMENT_LEFT, -1, int(maxf(10.0, pr * 1.35)), Color("3b2500"))
 
 func _draw_particles() -> void:
 	for p in particles:
 		var a := clampf(float(p.life) / float(p.max_life), 0.0, 1.0)
-		draw_circle(p.pos, float(p.radius), Color(palette.accent, a))
+		var particle_color: Color = p.get("color", palette.accent)
+		draw_circle(p.pos, float(p.radius), Color(particle_color, a))
 
 func _visible_cell(pos: Vector2i) -> bool:
 	if not bool(maze.get("fog", false)):
@@ -363,15 +415,25 @@ func _panel_style(color: Color) -> StyleBoxFlat:
 	s.border_color = Color(palette.wall, 0.28)
 	return s
 
-func _spawn_sparks(count: int) -> void:
+func _spawn_sparks(count: int, spark_color: Color = Color.TRANSPARENT) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	var center := _cell_center(player)
+	var resolved_color: Color = palette.accent if spark_color == Color.TRANSPARENT else spark_color
 	for _i in count:
 		var angle := rng.randf_range(0.0, TAU)
 		var speed := rng.randf_range(25.0, 95.0)
 		var life := rng.randf_range(0.25, 0.65)
-		particles.append({"pos": center, "vel": Vector2.from_angle(angle)*speed, "life": life, "max_life": life, "radius": rng.randf_range(1.2, 3.0)})
+		particles.append({"pos": center, "vel": Vector2.from_angle(angle) * speed, "life": life, "max_life": life, "radius": rng.randf_range(1.2, 3.0), "color": resolved_color})
+
+func _spawn_victory_effect(base_count: int) -> void:
+	var victory_id := str(cosmetics.get("victory_fx", "default"))
+	match victory_id:
+		"victory_fx_supernova": _spawn_sparks(base_count + 42, Color("ffd166"))
+		"victory_fx_thunder": _spawn_sparks(base_count + 34, Color("ffe66d"))
+		"victory_fx_portal": _spawn_sparks(base_count + 48, Color("a78bfa"))
+		"victory_fx_sats": _spawn_sparks(base_count + 56, Color("ffbd2e"))
+		_: _spawn_sparks(base_count)
 
 func _spawn_bump() -> void:
 	_spawn_sparks(4)

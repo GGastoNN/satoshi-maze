@@ -18,6 +18,7 @@ var game_active := false
 var payment_status_label: Label
 var purchase_actions: VBoxContainer
 var leaderboard_box: VBoxContainer
+var store_filter := "all"
 var audio_move: AudioStreamPlayer
 var audio_orb: AudioStreamPlayer
 var audio_win: AudioStreamPlayer
@@ -146,7 +147,7 @@ func show_levels() -> void:
 	screen_root.add_child(info)
 	if not save.has_product("full_pass"):
 		screen_root.add_child(_button("∞ MAZE PASS · DESBLOQUEAR LOS 100 · 149 SATS", func(): show_purchase_product("full_pass"), false, GOLD))
-	var scroll := ScrollContainer.new()
+	var scroll := TouchScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	screen_root.add_child(scroll)
 	var grid := GridContainer.new()
@@ -294,7 +295,9 @@ func show_infinite_failed() -> void:
 	screen_root.add_child(_button("NUEVA RACHA", func(): start_infinite(1), true, PINK))
 	screen_root.add_child(_button("MENÚ", func(): show_menu(), false, TEXT))
 
-func show_store() -> void:
+func show_store(filter: String = "") -> void:
+	if not filter.is_empty():
+		store_filter = filter
 	current_screen = "store"
 	game_active = false
 	_clear_screen()
@@ -307,14 +310,35 @@ func show_store() -> void:
 	local_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	local_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	screen_root.add_child(local_note)
-	var scroll := ScrollContainer.new()
+	var filter_grid := GridContainer.new()
+	filter_grid.columns = 3
+	filter_grid.add_theme_constant_override("h_separation", 7)
+	filter_grid.add_theme_constant_override("v_separation", 7)
+	filter_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for filter_id in ["all", "skins", "trails", "themes", "finish", "bundles"]:
+		var filter_button := _button(_store_filter_title(str(filter_id)), Callable(self, "show_store").bind(str(filter_id)), false, GOLD if store_filter == str(filter_id) else MUTED)
+		filter_button.custom_minimum_size = Vector2(0, 45)
+		filter_button.add_theme_font_size_override("font_size", 13)
+		filter_grid.add_child(filter_button)
+	screen_root.add_child(filter_grid)
+	var scroll := TouchScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	screen_root.add_child(scroll)
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 10)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
+	var last_section := ""
 	for product in ProductCatalog.list_store_products():
+		var section: String = _store_section_for_kind(str(product.get("kind", "")))
+		if store_filter != "all" and section != store_filter:
+			continue
+		if section != last_section:
+			last_section = section
+			var section_label := _label(_store_section_title(section), 19, CYAN if section != "bundles" else GOLD)
+			section_label.add_theme_constant_override("outline_size", 4)
+			section_label.add_theme_color_override("font_outline_color", Color("050814"))
+			list.add_child(section_label)
 		list.add_child(_product_card(product))
 	if not save.purchase_history.is_empty():
 		list.add_child(_label("ÚLTIMAS COMPRAS", 19, CYAN))
@@ -323,19 +347,73 @@ func show_store() -> void:
 			var history_name: String = str(history_product.get("name", purchase.get("name", "Compra")))
 			list.add_child(_label(Localization.f("purchase_row", [history_name, int(purchase.get("amount_sats", 0))]), 14, MUTED))
 
+func _store_filter_title(filter_id: String) -> String:
+	var language: String = Localization.current_language()
+	var labels: Dictionary = {
+		"es": {"all": "TODO", "skins": "SKINS", "trails": "TRAILS", "themes": "TEMAS", "finish": "FINALES", "bundles": "PACKS"},
+		"en": {"all": "ALL", "skins": "SKINS", "trails": "TRAILS", "themes": "THEMES", "finish": "FINISH", "bundles": "PACKS"},
+		"pt": {"all": "TUDO", "skins": "SKINS", "trails": "TRAILS", "themes": "TEMAS", "finish": "FINAIS", "bundles": "PACKS"},
+		"fr": {"all": "TOUT", "skins": "SKINS", "trails": "TRACES", "themes": "THÈMES", "finish": "FINAUX", "bundles": "PACKS"},
+		"de": {"all": "ALLE", "skins": "SKINS", "trails": "TRAILS", "themes": "THEMEN", "finish": "FINISH", "bundles": "PAKETE"},
+		"it": {"all": "TUTTO", "skins": "SKIN", "trails": "SCIE", "themes": "TEMI", "finish": "FINALI", "bundles": "PACK"},
+	}
+	var selected: Dictionary = labels.get(language, labels["en"])
+	return str(selected.get(filter_id, filter_id.to_upper()))
+
+func _store_section_for_kind(kind: String) -> String:
+	match kind:
+		"pass", "feature": return "featured"
+		"bundle": return "bundles"
+		"skin": return "skins"
+		"trail": return "trails"
+		"theme": return "themes"
+		"victory_fx": return "finish"
+		_: return "other"
+
+func _store_section_title(section: String) -> String:
+	var language: String = Localization.current_language()
+	var titles: Dictionary = {
+		"es": {"featured": "DESTACADOS", "bundles": "PACKS", "skins": "SKINS", "trails": "TRAILS", "themes": "TEMAS", "finish": "EFECTOS DE VICTORIA", "other": "EXTRAS"},
+		"en": {"featured": "FEATURED", "bundles": "PACKS", "skins": "SKINS", "trails": "TRAILS", "themes": "THEMES", "finish": "VICTORY EFFECTS", "other": "EXTRAS"},
+		"pt": {"featured": "DESTAQUES", "bundles": "PACKS", "skins": "SKINS", "trails": "TRAILS", "themes": "TEMAS", "finish": "EFEITOS DE VITÓRIA", "other": "EXTRAS"},
+		"fr": {"featured": "À LA UNE", "bundles": "PACKS", "skins": "SKINS", "trails": "TRACES", "themes": "THÈMES", "finish": "EFFETS DE VICTOIRE", "other": "EXTRAS"},
+		"de": {"featured": "HIGHLIGHTS", "bundles": "PAKETE", "skins": "SKINS", "trails": "TRAILS", "themes": "THEMEN", "finish": "SIEGESEFFEKTE", "other": "EXTRAS"},
+		"it": {"featured": "IN EVIDENZA", "bundles": "PACK", "skins": "SKIN", "trails": "SCIE", "themes": "TEMI", "finish": "EFFETTI VITTORIA", "other": "EXTRA"},
+	}
+	var selected: Dictionary = titles.get(language, titles["en"])
+	return str(selected.get(section, selected["other"]))
+
+func _is_store_product_owned(product: Dictionary) -> bool:
+	var product_id := str(product.get("id", ""))
+	var kind := str(product.get("kind", ""))
+	if kind == "pass":
+		return save.has_product("full_pass")
+	if kind == "bundle":
+		if save.has_product(product_id):
+			return true
+		var bundle_items: Array = ProductCatalog.bundle_items(product_id)
+		if bundle_items.is_empty():
+			return false
+		for bundled_id in bundle_items:
+			if not save.has_product(str(bundled_id)):
+				return false
+		return true
+	return save.has_product(product_id)
+
 func _product_card(product: Dictionary) -> Control:
 	var product_id := str(product.id)
-	var owned := save.has_product(product_id)
-	if str(product.kind) == "pass": owned = save.has_product("full_pass")
+	var owned: bool = _is_store_product_owned(product)
 	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_theme_stylebox_override("panel", _panel(Color("10182f"), Color(product.accent, 0.34), 18))
 	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_theme_constant_override("margin_left", 14); margin.add_theme_constant_override("margin_right", 14)
 	margin.add_theme_constant_override("margin_top", 12); margin.add_theme_constant_override("margin_bottom", 12)
 	panel.add_child(margin)
-	var row := HBoxContainer.new(); row.add_theme_constant_override("separation", 12); margin.add_child(row)
+	var row := HBoxContainer.new(); row.mouse_filter = Control.MOUSE_FILTER_IGNORE; row.add_theme_constant_override("separation", 12); margin.add_child(row)
 	var icon := _label(str(product.icon), 35, Color(product.accent)); icon.custom_minimum_size = Vector2(48, 0); icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; row.add_child(icon)
-	var copy := VBoxContainer.new(); copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL; row.add_child(copy)
+	var copy := VBoxContainer.new(); copy.mouse_filter = Control.MOUSE_FILTER_IGNORE; copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL; row.add_child(copy)
 	copy.add_child(_label(str(product.name), 18, TEXT))
 	var desc := _label(str(product.description), 13, MUTED); desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; copy.add_child(desc)
 	var action: Button
@@ -370,7 +448,11 @@ func show_collection() -> void:
 	reset_row.add_child(_button("RESET SKIN", Callable(self, "_reset_equipped").bind("skin"), false, TEXT))
 	reset_row.add_child(_button("RESET TRAIL", Callable(self, "_reset_equipped").bind("trail"), false, TEXT))
 	screen_root.add_child(reset_row)
-	var scroll := ScrollContainer.new(); scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL; screen_root.add_child(scroll)
+	var reset_row_extra := HBoxContainer.new(); reset_row_extra.add_theme_constant_override("separation", 8)
+	reset_row_extra.add_child(_button(_collection_reset_title("theme"), Callable(self, "_reset_equipped").bind("theme"), false, TEXT))
+	reset_row_extra.add_child(_button(_collection_reset_title("victory_fx"), Callable(self, "_reset_equipped").bind("victory_fx"), false, TEXT))
+	screen_root.add_child(reset_row_extra)
+	var scroll := TouchScrollContainer.new(); scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL; screen_root.add_child(scroll)
 	var list := VBoxContainer.new(); list.add_theme_constant_override("separation", 9); list.size_flags_horizontal = Control.SIZE_EXPAND_FILL; scroll.add_child(list)
 	var owned_count := 0
 	for product in ProductCatalog.list_collection_products():
@@ -380,6 +462,19 @@ func show_collection() -> void:
 	if owned_count == 0:
 		list.add_child(_card("TU COLECCIÓN EMPIEZA ACÁ", "Las skins y efectos premium aparecerán en esta vitrina.", CYAN))
 		list.add_child(_button("EXPLORAR TIENDA", func(): show_store(), true, GOLD))
+
+func _collection_reset_title(kind: String) -> String:
+	var language: String = Localization.current_language()
+	var labels: Dictionary = {
+		"es": {"theme": "RESET TEMA", "victory_fx": "RESET FINAL"},
+		"en": {"theme": "RESET THEME", "victory_fx": "RESET FINISH"},
+		"pt": {"theme": "RESETAR TEMA", "victory_fx": "RESETAR FINAL"},
+		"fr": {"theme": "RÉINIT. THÈME", "victory_fx": "RÉINIT. FIN"},
+		"de": {"theme": "THEME RESET", "victory_fx": "FINISH RESET"},
+		"it": {"theme": "RESET TEMA", "victory_fx": "RESET FINALE"},
+	}
+	var selected: Dictionary = labels.get(language, labels["en"])
+	return str(selected.get(kind, "RESET"))
 
 func _reset_equipped(kind: String) -> void:
 	save.reset_equipped(kind)
@@ -405,7 +500,7 @@ func show_help() -> void:
 	current_screen = "help"
 	_clear_screen()
 	_add_topbar("CÓMO JUGAR", func(): show_menu())
-	var scroll := ScrollContainer.new(); scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL; screen_root.add_child(scroll)
+	var scroll := TouchScrollContainer.new(); scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL; screen_root.add_child(scroll)
 	var list := VBoxContainer.new(); list.add_theme_constant_override("separation", 10); list.size_flags_horizontal = Control.SIZE_EXPAND_FILL; scroll.add_child(list)
 	for item in [
 		["DOMINÁ EL LABERINTO", "Deslizá o usá el pad. Menos movimientos aumenta tu eficiencia y mejora el Ghost Run."],
@@ -527,7 +622,12 @@ func show_result(moves: int, elapsed: float, orbs: int, stars: int, shortest: in
 	_clear_screen()
 	_spacer(30)
 	var victory_fx := str(save.equipped.get("victory_fx", "default"))
-	var crown_text := "✦  ✹  ✦" if victory_fx == "victory_fx_supernova" else "✦"
+	var crown_text := "✦"
+	match victory_fx:
+		"victory_fx_supernova": crown_text = "✦  ✹  ✦"
+		"victory_fx_thunder": crown_text = "ϟ  ✦  ϟ"
+		"victory_fx_portal": crown_text = "⟲  ◉  ⟳"
+		"victory_fx_sats": crown_text = "₿  ✦  ₿"
 	var crown := _label(crown_text, 76, GOLD); crown.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(crown)
 	var title := _label("¡ESCAPASTE!", 37, TEXT); title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(title)
 	var star_text := "★".repeat(stars) + "☆".repeat(3-stars)
@@ -600,6 +700,8 @@ func _add_topbar(title: String, back_cb: Callable) -> void:
 
 func _button(text: String, cb: Callable, big := false, accent := CYAN) -> Button:
 	var b := Button.new()
+	b.mouse_filter = Control.MOUSE_FILTER_PASS
+	b.mouse_force_pass_scroll_events = true
 	b.text = Localization.text(text)
 	b.focus_mode = Control.FOCUS_NONE
 	b.custom_minimum_size = Vector2(0, 72 if big else 55)
@@ -615,15 +717,17 @@ func _button(text: String, cb: Callable, big := false, accent := CYAN) -> Button
 
 func _card(title: String, body: String, accent: Color) -> Control:
 	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_theme_stylebox_override("panel", _panel(Color("10182f"), Color(accent, 0.30), 18))
-	var m := MarginContainer.new(); m.add_theme_constant_override("margin_left", 17); m.add_theme_constant_override("margin_right", 17); m.add_theme_constant_override("margin_top", 14); m.add_theme_constant_override("margin_bottom", 14); panel.add_child(m)
-	var v := VBoxContainer.new(); v.add_theme_constant_override("separation", 6); m.add_child(v)
+	var m := MarginContainer.new(); m.mouse_filter = Control.MOUSE_FILTER_IGNORE; m.add_theme_constant_override("margin_left", 17); m.add_theme_constant_override("margin_right", 17); m.add_theme_constant_override("margin_top", 14); m.add_theme_constant_override("margin_bottom", 14); panel.add_child(m)
+	var v := VBoxContainer.new(); v.mouse_filter = Control.MOUSE_FILTER_IGNORE; v.add_theme_constant_override("separation", 6); m.add_child(v)
 	v.add_child(_label(title, 20, accent))
 	var d := _label(body, 15, TEXT); d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; v.add_child(d)
 	return panel
 
 func _label(text: String, size: int, color: Color) -> Label:
 	var l := Label.new()
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	l.text = Localization.text(text)
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", color)

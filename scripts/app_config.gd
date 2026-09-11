@@ -2,7 +2,7 @@ extends RefCounted
 class_name AppConfig
 
 const GAME_NAME := "Satoshi Maze"
-const VERSION := "3.0.0"
+const VERSION := "4.0.0"
 const TOTAL_LEVELS := 100
 const FREE_LEVELS := 3
 const LEVEL_PRICE_SATS := 2

@@ -161,6 +161,10 @@ func grant_product(product_id: String, payment_id := "", amount_sats := 0) -> vo
 	elif product_id == "full_pass":
 		owned_products[product_id] = true
 		unlock_all_levels()
+	elif kind == "bundle":
+		owned_products[product_id] = true
+		for bundled_product in ProductCatalog.bundle_items(product_id):
+			owned_products[str(bundled_product)] = true
 	else:
 		owned_products[product_id] = true
 	purchase_history.push_front({
