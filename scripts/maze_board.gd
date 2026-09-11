@@ -25,6 +25,15 @@ var bump_count := 0
 var ghost_path: Array[Vector2i] = []
 var ghost_total_time := 0.0
 var ghost_elapsed := 0.0
+var visual_player_pos := Vector2.ZERO
+var visual_from := Vector2.ZERO
+var visual_to := Vector2.ZERO
+var move_anim_t := 1.0
+var move_anim_duration := 0.105
+var bump_flash := 0.0
+var portal_flash := 0.0
+var reduced_motion := false
+var show_minimap := true
 
 const BASE_PALETTES := [
 	{"bg": Color("10152f"), "floor": Color("172047"), "wall": Color("61e7ff"), "accent": Color("ff4fd8"), "goal": Color("ffd166")},
@@ -54,7 +63,15 @@ func setup(new_maze: Dictionary, new_level: int, new_cosmetics: Dictionary, ghos
 	maze = new_maze
 	level = new_level
 	cosmetics = new_cosmetics.duplicate(true)
+	reduced_motion = bool(cosmetics.get("_reduced_motion", false))
+	show_minimap = bool(cosmetics.get("_show_minimap", true))
 	player = maze.start
+	visual_player_pos = Vector2(player)
+	visual_from = visual_player_pos
+	visual_to = visual_player_pos
+	move_anim_t = 1.0
+	bump_flash = 0.0
+	portal_flash = 0.0
 	moves = 0
 	collected.clear()
 	visual_trail = [player]
@@ -80,8 +97,17 @@ func _ready() -> void:
 	set_process(true)
 
 func _process(delta: float) -> void:
-	pulse += delta
-	ghost_elapsed += delta
+	if not reduced_motion:
+		pulse += delta
+		ghost_elapsed += delta
+	if move_anim_t < 1.0:
+		move_anim_t = minf(1.0, move_anim_t + delta / move_anim_duration)
+		var eased := 1.0 - pow(1.0 - move_anim_t, 3.0)
+		visual_player_pos = visual_from.lerp(visual_to, eased)
+	else:
+		visual_player_pos = visual_to
+	bump_flash = maxf(0.0, bump_flash - delta * 4.8)
+	portal_flash = maxf(0.0, portal_flash - delta * 2.8)
 	for p in particles:
 		p.pos += p.vel * delta
 		p.life -= delta
@@ -102,7 +128,14 @@ func move_player(dir: Vector2i) -> void:
 	queue_redraw()
 
 func _step(dir: Vector2i) -> void:
+	visual_from = visual_player_pos
 	player += dir
+	visual_to = Vector2(player)
+	if reduced_motion:
+		visual_player_pos = visual_to
+		move_anim_t = 1.0
+	else:
+		move_anim_t = 0.0
 	moves += 1
 	run_path.append(player)
 	visual_trail.append(player)
@@ -143,6 +176,11 @@ func _apply_portal() -> void:
 	if destination.x < 0:
 		return
 	player = destination
+	visual_player_pos = Vector2(player)
+	visual_from = visual_player_pos
+	visual_to = visual_player_pos
+	move_anim_t = 1.0
+	portal_flash = 1.0
 	run_path.append(player)
 	visual_trail.append(player)
 	_mark_seen(player)
@@ -191,11 +229,19 @@ func _geometry() -> Dictionary:
 	var cell: float = minf((size.x - pad * 2.0) / float(w), (size.y - pad * 2.0) / float(h))
 	var board_size := Vector2(cell * w, cell * h)
 	var origin := (size - board_size) * 0.5
+	if bump_flash > 0.0 and not reduced_motion:
+		origin += Vector2(sin(pulse * 47.0), cos(pulse * 41.0)) * bump_flash * 3.8
 	return {"cell": cell, "origin": origin}
 
 func _cell_center(p: Vector2i) -> Vector2:
+	return _grid_center(Vector2(p))
+
+func _grid_center(p: Vector2) -> Vector2:
 	var g := _geometry()
 	return g.origin + Vector2((p.x + 0.5) * g.cell, (p.y + 0.5) * g.cell)
+
+func _visual_center() -> Vector2:
+	return _grid_center(visual_player_pos)
 
 func _draw() -> void:
 	if maze.is_empty():
@@ -206,6 +252,7 @@ func _draw() -> void:
 	var w: int = int(maze.width)
 	var h: int = int(maze.height)
 	draw_style_box(_panel_style(palette.bg), Rect2(origin - Vector2(9,9), Vector2(cell*w+18, cell*h+18)))
+	_draw_board_ambient(origin, cell, w, h)
 
 	for y in h:
 		for x in w:
@@ -219,12 +266,145 @@ func _draw() -> void:
 				c = c.lightened(0.11)
 			draw_rect(Rect2(origin + Vector2(x*cell,y*cell), Vector2(cell+0.5,cell+0.5)), c)
 
+	_draw_player_light(cell)
 	_draw_specials(cell)
 	_draw_trail(cell)
 	_draw_walls(origin, cell, w, h)
+	_draw_fog_memory(origin, cell)
 	_draw_ghost(cell)
+	_draw_aura(cell)
 	_draw_player(cell)
+	_draw_minimap()
+	_draw_bump_feedback(cell)
 	_draw_particles()
+
+func _draw_board_ambient(origin: Vector2, cell: float, w: int, h: int) -> void:
+	var world := clampi(int((level - 1) / 10), 0, 9)
+	var rect := Rect2(origin, Vector2(cell * w, cell * h))
+	match world:
+		2:
+			for i in range(0, w, 2):
+				var x := origin.x + (float(i) + 0.5) * cell
+				draw_line(Vector2(x, rect.position.y), Vector2(x, rect.end.y), Color(palette.wall, 0.022), 1.0)
+		4:
+			for i in 10:
+				var fx := origin.x + fmod(float(i * 71) + pulse * 9.0, rect.size.x)
+				var fy := rect.end.y - fmod(float(i * 43) + pulse * 15.0, rect.size.y)
+				draw_circle(Vector2(fx, fy), maxf(1.0, cell * 0.035), Color(palette.accent, 0.075))
+		5:
+			for i in 12:
+				var sx := origin.x + fmod(float(i * 53) + pulse * 2.0, rect.size.x)
+				var sy := origin.y + fmod(float(i * 83) + pulse * 8.0, rect.size.y)
+				draw_line(Vector2(sx - 3.0, sy), Vector2(sx + 3.0, sy), Color(palette.wall, 0.08), 1.0)
+		8:
+			for i in 9:
+				var bx := origin.x + fmod(float(i * 79) + 12.0 * sin(pulse * 0.3 + float(i)), rect.size.x)
+				var by := rect.end.y - fmod(float(i * 59) + pulse * 7.0, rect.size.y)
+				draw_arc(Vector2(bx, by), maxf(2.0, cell * 0.09), 0.0, TAU, 12, Color(palette.wall, 0.055), 1.0)
+		9:
+			for y in range(0, h, 2):
+				var yy := origin.y + float(y) * cell
+				draw_line(Vector2(origin.x, yy), Vector2(rect.end.x, yy), Color(palette.accent, 0.028), 1.0)
+		_:
+			pass
+
+func _draw_player_light(cell: float) -> void:
+	var center := _visual_center()
+	draw_circle(center, cell * 2.25, Color(palette.accent, 0.020))
+	draw_circle(center, cell * 1.45, Color(palette.accent, 0.034))
+	draw_circle(center, cell * 0.78, Color(palette.accent, 0.050))
+
+func _draw_fog_memory(origin: Vector2, cell: float) -> void:
+	if not bool(maze.get("fog", false)):
+		return
+	for pos in seen_cells:
+		var distance := abs(pos.x - player.x) + abs(pos.y - player.y)
+		if distance <= 2:
+			continue
+		var darkness := clampf(0.10 + float(distance - 2) * 0.025, 0.10, 0.34)
+		draw_rect(Rect2(origin + Vector2(pos.x * cell, pos.y * cell), Vector2(cell + 0.6, cell + 0.6)), Color(palette.bg, darkness))
+
+func _draw_aura(cell: float) -> void:
+	var aura := str(cosmetics.get("aura", "default"))
+	if aura == "default":
+		return
+	var center := _visual_center()
+	var base_r := cell * 0.34
+	match aura:
+		"aura_lightning":
+			for i in 3:
+				var start := pulse * (2.2 + float(i) * 0.3) + float(i)
+				draw_arc(center, base_r + float(i) * cell * 0.07, start, start + PI * 0.78, 16, Color("ffe66d", 0.70 - float(i) * 0.13), maxf(1.0, cell * 0.035), true)
+		"aura_quantum":
+			draw_arc(center, base_r * 1.10, pulse * 1.8, pulse * 1.8 + PI * 1.5, 28, Color("6de7ff", 0.62), maxf(1.0, cell * 0.032), true)
+			draw_arc(center, base_r * 1.35, -pulse * 2.0, -pulse * 2.0 + PI * 1.35, 28, Color("a78bfa", 0.52), maxf(1.0, cell * 0.030), true)
+		"aura_sats":
+			draw_arc(center, base_r * 1.38, 0.0, TAU, 32, Color("ffbd2e", 0.28), maxf(1.0, cell * 0.026), true)
+			for i in 4:
+				var a := pulse * 1.25 + float(i) * TAU / 4.0
+				var sat := center + Vector2.from_angle(a) * base_r * 1.38
+				draw_circle(sat, maxf(2.2, cell * 0.055), Color("ffbd2e", 0.85))
+		"aura_prism":
+			for i in 3:
+				var colors: Array[Color] = [Color("58e7ff"), Color("ff5fce"), Color("a78bfa")]
+				var prism_color: Color = colors[i]
+				draw_arc(center, base_r * (1.0 + float(i) * 0.18), pulse * (1.1 + float(i) * 0.22) + float(i), pulse * (1.1 + float(i) * 0.22) + float(i) + PI * 1.22, 26, Color(prism_color, 0.54), maxf(1.0, cell * 0.026), true)
+		"aura_master":
+			draw_arc(center, base_r * 1.25, 0.0, TAU, 32, Color("ffd166", 0.42), maxf(1.0, cell * 0.032), true)
+			var crown_y := center.y - base_r * 1.35
+			var crown := PackedVector2Array([
+				Vector2(center.x - base_r * 0.52, crown_y + base_r * 0.34),
+				Vector2(center.x - base_r * 0.36, crown_y),
+				Vector2(center.x, crown_y + base_r * 0.22),
+				Vector2(center.x + base_r * 0.36, crown_y),
+				Vector2(center.x + base_r * 0.52, crown_y + base_r * 0.34),
+			])
+			draw_polyline(crown, Color("ffd166", 0.88), maxf(1.0, cell * 0.035), true)
+
+func _draw_minimap() -> void:
+	if not show_minimap:
+		return
+	var w := int(maze.get("width", 1))
+	var h := int(maze.get("height", 1))
+	if maxi(w, h) < 17:
+		return
+	var map_size := 92.0
+	var margin := 13.0
+	var origin := Vector2(size.x - map_size - margin, margin)
+	var panel := StyleBoxFlat.new()
+	panel.bg_color = Color("040814", 0.78)
+	panel.border_color = Color(palette.wall, 0.25)
+	panel.border_width_left = 1
+	panel.border_width_right = 1
+	panel.border_width_top = 1
+	panel.border_width_bottom = 1
+	panel.corner_radius_top_left = 11
+	panel.corner_radius_top_right = 11
+	panel.corner_radius_bottom_left = 11
+	panel.corner_radius_bottom_right = 11
+	draw_style_box(panel, Rect2(origin, Vector2(map_size, map_size)))
+	var usable := map_size - 14.0
+	var px := usable / float(w)
+	var py := usable / float(h)
+	var start := origin + Vector2(7, 7)
+	for y in h:
+		for x in w:
+			var pos := Vector2i(x, y)
+			if bool(maze.get("fog", false)) and not seen_cells.has(pos):
+				continue
+			draw_rect(Rect2(start + Vector2(float(x) * px, float(y) * py), Vector2(maxf(1.0, px * 0.72), maxf(1.0, py * 0.72))), Color(palette.wall, 0.16))
+	var player_dot := start + Vector2((float(player.x) + 0.5) * px, (float(player.y) + 0.5) * py)
+	draw_circle(player_dot, maxf(2.0, minf(px, py) * 0.8), palette.accent)
+	if not bool(maze.get("fog", false)) or seen_cells.has(maze.goal):
+		var goal_dot := start + Vector2((float(maze.goal.x) + 0.5) * px, (float(maze.goal.y) + 0.5) * py)
+		draw_circle(goal_dot, maxf(1.8, minf(px, py) * 0.7), palette.goal)
+
+func _draw_bump_feedback(cell: float) -> void:
+	if bump_flash <= 0.0:
+		return
+	var center := _visual_center()
+	var radius := cell * (0.28 + (1.0 - bump_flash) * 0.75)
+	draw_arc(center, radius, 0.0, TAU, 28, Color("ff718d", bump_flash * 0.62), maxf(1.0, cell * 0.035), true)
 
 func _draw_specials(cell: float) -> void:
 	for orb in maze.orbs:
@@ -250,8 +430,9 @@ func _draw_specials(cell: float) -> void:
 			if _visible_cell(portal):
 				var pp := _cell_center(portal)
 				var rr := cell * (0.16 + 0.02 * sin(pulse * 5.0))
-				draw_arc(pp, rr, 0, TAU, 32, palette.wall, maxf(2.0, cell*0.05), true)
-				draw_arc(pp, rr * 0.62, 0, TAU, 24, palette.accent, maxf(1.0, cell*0.035), true)
+				draw_circle(pp, rr * 1.7, Color(palette.accent, 0.045 + portal_flash * 0.08))
+				draw_arc(pp, rr, pulse * 1.8, pulse * 1.8 + PI * 1.55, 32, palette.wall, maxf(2.0, cell*0.05), true)
+				draw_arc(pp, rr * 0.62, -pulse * 2.3, -pulse * 2.3 + PI * 1.45, 24, palette.accent, maxf(1.0, cell*0.035), true)
 
 	var gp := _cell_center(maze.goal)
 	if _visible_cell(maze.goal):
@@ -326,7 +507,7 @@ func _draw_ghost(cell: float) -> void:
 	draw_circle(center, cell * 0.105, Color("b9c8ff", 0.30))
 
 func _draw_player(cell: float) -> void:
-	var pp := _cell_center(player)
+	var pp := _visual_center()
 	var pr := cell * 0.22
 	var skin := str(cosmetics.get("skin", "default"))
 	var color: Color = palette.accent
@@ -436,7 +617,8 @@ func _spawn_victory_effect(base_count: int) -> void:
 		_: _spawn_sparks(base_count)
 
 func _spawn_bump() -> void:
-	_spawn_sparks(4)
+	bump_flash = 1.0
+	_spawn_sparks(7, Color("ff718d"))
 
 func get_run_path() -> Array:
 	return run_path.duplicate()

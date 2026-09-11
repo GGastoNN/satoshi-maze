@@ -22,6 +22,8 @@ var last_daily_day := -1
 var infinite_best_round := 0
 var install_id := ""
 var language_override := "auto"
+var reduced_motion := false
+var show_minimap := true
 
 func load_data() -> void:
 	var source_path: String = AppConfig.SAVE_PATH
@@ -43,8 +45,9 @@ func load_data() -> void:
 	var data: Dictionary = parsed
 	_apply_data(data)
 	_ensure_install_id()
-	if source_path != AppConfig.SAVE_PATH:
-		save_data()
+	_unlock_achievements()
+	# Persist newly introduced achievement cosmetics for existing V3/V4 saves.
+	save_data()
 
 func _apply_data(data: Dictionary) -> void:
 	purchased_levels = data.get("purchased_levels", data.get("purchased", {}))
@@ -68,6 +71,8 @@ func _apply_data(data: Dictionary) -> void:
 	infinite_best_round = int(data.get("infinite_best_round", 0))
 	install_id = str(data.get("install_id", ""))
 	language_override = str(data.get("language_override", "auto"))
+	reduced_motion = bool(data.get("reduced_motion", false))
+	show_minimap = bool(data.get("show_minimap", true))
 
 func _migrate_legacy() -> void:
 	if not FileAccess.file_exists(AppConfig.LEGACY_SAVE_PATH):
@@ -89,6 +94,7 @@ func _migrate_legacy() -> void:
 	best_moves = old.get("best_moves", {})
 	best_times = old.get("best_times", {})
 	total_stars = int(old.get("total_stars", 0))
+	_unlock_achievements()
 	save_data()
 
 func _ensure_install_id() -> void:
@@ -125,6 +131,8 @@ func save_data() -> void:
 		"infinite_best_round": infinite_best_round,
 		"install_id": install_id,
 		"language_override": language_override,
+		"reduced_motion": reduced_motion,
+		"show_minimap": show_minimap,
 	}))
 
 func is_unlocked(level: int) -> bool:
@@ -258,6 +266,15 @@ func set_language_override(value: String) -> void:
 	language_override = value if value == "auto" or value in Localization.SUPPORTED_LANGUAGES else "auto"
 	save_data()
 
+
+func set_reduced_motion(value: bool) -> void:
+	reduced_motion = value
+	save_data()
+
+func set_show_minimap(value: bool) -> void:
+	show_minimap = value
+	save_data()
+
 func get_level_stars(level: int) -> int:
 	return int(best_stars.get(str(level), 0))
 
@@ -289,6 +306,7 @@ func _unlock_achievements() -> void:
 	if total_stars >= 20: owned_products["skin_nova"] = true
 	if total_stars >= 60: owned_products["trail_stars"] = true
 	if total_stars >= 120: owned_products["theme_deep"] = true
+	if total_stars >= 200: owned_products["aura_master"] = true
 	if total_stars >= 150: achievements["star_master"] = true
 	if daily_streak >= 7: achievements["daily_7"] = true
 	if infinite_best_round >= 10: achievements["infinite_10"] = true
