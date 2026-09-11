@@ -1,39 +1,41 @@
-# Satoshi Maze V4
+# Satoshi Maze V5 · Visual Edition
 
-Juego de laberintos para Android hecho con Godot 4.7.x, con 100 niveles, desafíos Daily/Weekly, Infinite Run, Ghost Run, estrellas, modificadores, cosméticos y tienda Lightning.
+Juego de laberintos para Android hecho con Godot 4.7.x. Incluye 100 niveles, Daily Maze, Weekly Speedrun, Infinite Run, Ghost Run, estrellas, Boss Mazes, modificadores, colección cosmética y pagos Lightning directos.
 
-## Novedades V4
+## V5 · Visual Polish
 
-- Scroll táctil corregido en tienda, campaña, colección y ayuda.
-- Las capas visuales de las tarjetas ya no interceptan el gesto; los botones propagan el input al `ScrollContainer`.
-- Zona muerta táctil de 18 px para distinguir un tap de un drag y evitar compras/equipados accidentales al desplazar.
-- Tienda reorganizada por Destacados, Packs, Skins, Trails, Temas y Efectos de victoria.
-- Nuevas skins: Cyber Ruby, Ice Shard, Solar Core y Quantum.
-- Nuevos trails: Neon Ribbon, Firefly, Orbit Trail y Glitch Trail.
-- Nuevos temas: Arctic, Lava Core, Abyss Ocean y Synthwave.
-- Nuevos finales: Thunder Finish, Portal Collapse y Sats Burst.
-- Tres packs con precio especial: Neon Starter Pack, Bitcoin Signature y Void Protocol.
-- Los packs conceden todos sus cosméticos permanentemente y no ofrecen ventajas competitivas.
-- Se conserva automáticamente todo el progreso y las compras de V3.
+- Diez mundos visuales para la campaña, con fondos y ambientación propios.
+- Home renovada con un mini laberinto animado y contexto del mundo actual.
+- Movimiento del jugador interpolado, iluminación reactiva y feedback visual al chocar.
+- Portales animados, niebla con memoria de zonas exploradas y minimapa opcional para laberintos grandes.
+- Resultados con revelado progresivo de estrellas, barra de eficiencia, medallas, récord personal y celebración al cerrar un mundo.
+- Colección convertida en galería con previews, bloqueados visibles, rarezas y estado equipado.
+- Tienda con previews animados, filtros táctiles y una nueva categoría de Auras.
+- Nuevas Auras: Lightning Aura, Quantum Aura, Sats Halo y Prism Aura.
+- Nuevo Quantum Motion Pack y Master Crown desbloqueable con 200 estrellas.
+- Microanimaciones en botones y transiciones entre pantallas.
+- Ajustes de Reduced Motion y minimapa.
+- Previews de tienda limitados a 24 FPS y redibujados solo cuando intersectan el viewport para cuidar rendimiento móvil.
+- Se mantiene el scroll táctil corregido de V4 en tienda, campaña, colección, ayuda y ajustes.
 
 ## Pagos Lightning
 
-Pago directo por LNURL-pay, sin backend de pagos, API keys ni webhook. La acreditación exige el endpoint LNURL `verify`; si no existe verificación segura, el juego cancela antes de abrir la wallet.
+El flujo de pagos permanece idéntico al de V4: pago directo por LNURL-pay, sin backend de pagos, API keys ni webhook. El contenido se acredita únicamente mediante la verificación segura del invoice ofrecida por el proveedor. Si no existe verificación, el juego bloquea el cobro antes de abrir la wallet.
 
-Los tres primeros niveles son gratuitos. Los niveles premium y la tienda ofrecen desbloqueos permanentes y cosméticos, sin ventajas pay-to-win. Las compras se guardan localmente en el dispositivo.
+Los tres primeros niveles son gratuitos. Los niveles premium, cosméticos y packs son compras permanentes sin ventajas pay-to-win. Las compras se guardan localmente en el dispositivo.
 
 Más detalles: `docs/PAYMENT_DIRECT.md`.
 
 ## Idiomas
 
-Idioma automático según `OS.get_locale()`: español, inglés, portugués, francés, alemán e italiano; otros locales usan inglés. También existe selección manual en **Ajustes**. Los nuevos productos mantienen traducciones de descripción para los seis idiomas.
+Detección automática según el locale del dispositivo: español, inglés, portugués, francés, alemán e italiano. Otros locales usan inglés. También existe selección manual en **Ajustes**. Las incorporaciones de V5 respetan el mismo sistema multilenguaje.
+
+## Guardado
+
+V5 conserva `user://satoshi_maze_save_v3.json`, por lo que actualiza sobre V3/V4 sin resetear progreso, estrellas, récords, idioma, niveles comprados ni cosméticos. Los nuevos ajustes usan valores seguros por defecto.
 
 ## Android / GitHub Actions
 
-El workflow `.github/workflows/android.yml` instala Godot 4.7.2, Java 17 y Android SDK, importa el proyecto, exporta `build/SatoshiMaze.apk` y publica el APK como artifact de Actions.
+El workflow `.github/workflows/android.yml` usa Godot 4.7.2, Java 17 y Android SDK. Antes de exportar valida la importación y falla si Godot informa `SCRIPT ERROR`, `Parse Error` o scripts que no pudieron cargarse. Luego exporta `build/SatoshiMaze.apk` y lo publica como artifact de Actions.
 
 El proyecto usa GL Compatibility y compresión ETC2/ASTC para Android.
-
-## Ranking online
-
-Daily y Weekly funcionan sin servidor y guardan las mejores marcas localmente. El leaderboard global está desacoplado de los pagos y permanece desactivado mientras `LEADERBOARD_API_BASE` esté vacío.
