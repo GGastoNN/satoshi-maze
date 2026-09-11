@@ -76,12 +76,32 @@ jobs:
           export/android/java_sdk_path = "${JAVA_HOME}"
           SETTINGS
 
+      - name: Validate every GDScript
+        shell: bash
+        run: |
+          set +e
+          failed=0
+          : > /tmp/godot-script-check.log
+          while IFS= read -r script; do
+            echo "=== Checking ${script} ===" | tee -a /tmp/godot-script-check.log
+            output="$(godot --headless --path . --check-only --script "${script}" 2>&1)"
+            status=$?
+            printf '%s\n' "$output" | tee -a /tmp/godot-script-check.log
+            if [ "$status" -ne 0 ] || printf '%s\n' "$output" | grep -Eq "SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script|ERROR: Failed to load script"; then
+              failed=1
+            fi
+          done < <(find scripts -type f -name '*.gd' -print | sort)
+          if [ "$failed" -ne 0 ]; then
+            echo "One or more GDScript files failed validation." >&2
+            exit 1
+          fi
+
       - name: Import and validate project
         shell: bash
         run: |
           set -o pipefail
           godot --headless --path . --import --quit 2>&1 | tee /tmp/godot-import.log
-          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script" /tmp/godot-import.log; then
+          if grep -E "SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script|ERROR: Failed to load script" /tmp/godot-import.log; then
             echo "Godot reported script/import errors." >&2
             exit 1
           fi
