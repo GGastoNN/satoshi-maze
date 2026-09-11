@@ -76,10 +76,15 @@ jobs:
           export/android/java_sdk_path = "${JAVA_HOME}"
           SETTINGS
 
-      - name: Import project
+      - name: Import and validate project
         shell: bash
         run: |
-          godot --headless --path . --import --quit
+          set -o pipefail
+          godot --headless --path . --import --quit 2>&1 | tee /tmp/godot-import.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script" /tmp/godot-import.log; then
+            echo "Godot reported script/import errors." >&2
+            exit 1
+          fi
 
       - name: Build APK
         shell: bash
