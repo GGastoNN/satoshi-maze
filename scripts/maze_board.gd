@@ -217,7 +217,7 @@ func _gui_input(event: InputEvent) -> void:
 func _handle_swipe(delta: Vector2) -> void:
 	if delta.length() < 24.0:
 		return
-	if abs(delta.x) > abs(delta.y):
+	if absf(delta.x) > absf(delta.y):
 		move_player(Vector2i.RIGHT if delta.x > 0 else Vector2i.LEFT)
 	else:
 		move_player(Vector2i.DOWN if delta.y > 0 else Vector2i.UP)
@@ -318,10 +318,10 @@ func _draw_fog_memory(origin: Vector2, cell: float) -> void:
 	if not bool(maze.get("fog", false)):
 		return
 	for pos in seen_cells:
-		var distance := abs(pos.x - player.x) + abs(pos.y - player.y)
+		var distance: int = absi(pos.x - player.x) + absi(pos.y - player.y)
 		if distance <= 2:
 			continue
-		var darkness := clampf(0.10 + float(distance - 2) * 0.025, 0.10, 0.34)
+		var darkness: float = clampf(0.10 + float(distance - 2) * 0.025, 0.10, 0.34)
 		draw_rect(Rect2(origin + Vector2(pos.x * cell, pos.y * cell), Vector2(cell + 0.6, cell + 0.6)), Color(palette.bg, darkness))
 
 func _draw_aura(cell: float) -> void:
