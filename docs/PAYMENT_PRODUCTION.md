@@ -4,7 +4,7 @@ El APK no debe contener `sk_live_...`, restricted keys con privilegios sensibles
 
 ## Camino recomendado
 
-1. Mantener en el cliente la creación del invoice LNURL a `gastonc@speed.app`.
+1. Mantener en el cliente la creación del invoice LNURL mediante el endpoint configurado en `AppConfig`, sin mostrar la dirección de cobro en la interfaz ni en la documentación pública.
 2. Si el callback devuelve `verify`, usarlo y desactivar el fallback manual.
 3. Si no existe `verify`, usar un backend HTTPS propio y Speed Webhooks.
 4. En Speed, suscribirse al evento de recepción de Payment Address y verificar siempre la firma del webhook.
