@@ -106,7 +106,10 @@ func _geometry() -> Dictionary:
 	var pad := 16.0
 	var w: int = maze.get("width", 1)
 	var h: int = maze.get("height", 1)
-	var cell := min((size.x - pad * 2.0) / w, (size.y - pad * 2.0) / h)
+	var cell: float = minf(
+		(size.x - pad * 2.0) / float(w),
+		(size.y - pad * 2.0) / float(h)
+	)
 	var board_size := Vector2(cell * w, cell * h)
 	var origin := (size - board_size) * 0.5
 	return {"cell": cell, "origin": origin}
@@ -128,7 +131,7 @@ func _draw() -> void:
 
 	for y in h:
 		for x in w:
-			var c := palette.floor
+			var c: Color = palette.floor
 			if (x + y) % 2 == 0:
 				c = c.lightened(0.045)
 			draw_rect(Rect2(origin + Vector2(x*cell,y*cell), Vector2(cell+0.5,cell+0.5)), c)

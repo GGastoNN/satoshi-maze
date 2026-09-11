@@ -28,26 +28,31 @@ static func generate(level: int) -> Dictionary:
 	while not stack.is_empty():
 		var current: Vector2i = stack.back()
 		var options: Array[Vector2i] = []
-		var dirs := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
+		var dirs: Array[Vector2i] = [
+			Vector2i(0, -1),
+			Vector2i(1, 0),
+			Vector2i(0, 1),
+			Vector2i(-1, 0),
+		]
 		for d in dirs:
-			var next := current + d
-			if next.x >= 0 and next.y >= 0 and next.x < width and next.y < height:
-				if not visited[next.y * width + next.x]:
-					options.append(next)
+			var candidate: Vector2i = current + d
+			if candidate.x >= 0 and candidate.y >= 0 and candidate.x < width and candidate.y < height:
+				if not visited[candidate.y * width + candidate.x]:
+					options.append(candidate)
 		if options.is_empty():
 			stack.pop_back()
 			continue
-		var next: Vector2i = options[rng.randi_range(0, options.size() - 1)]
-		_carve(walls, width, current, next)
-		visited[next.y * width + next.x] = true
-		stack.append(next)
+		var chosen: Vector2i = options[rng.randi_range(0, options.size() - 1)]
+		_carve(walls, width, current, chosen)
+		visited[chosen.y * width + chosen.x] = true
+		stack.append(chosen)
 
 	# Añade unos pocos bucles en niveles altos para evitar que todos los laberintos
 	# se sientan como un árbol perfecto, sin volverlos triviales.
 	var extra_loops := int(level / 12)
 	for _i in extra_loops:
 		var c := Vector2i(rng.randi_range(1, width - 2), rng.randi_range(1, height - 2))
-		var candidates := [Vector2i(1, 0), Vector2i(0, 1)]
+		var candidates: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1)]
 		var d: Vector2i = candidates[rng.randi_range(0, candidates.size() - 1)]
 		_carve(walls, width, c, c + d)
 
@@ -77,7 +82,7 @@ static func generate(level: int) -> Dictionary:
 static func can_move(data: Dictionary, pos: Vector2i, dir: Vector2i) -> bool:
 	var width: int = data.width
 	var height: int = data.height
-	var next := pos + dir
+	var next: Vector2i = pos + dir
 	if next.x < 0 or next.y < 0 or next.x >= width or next.y >= height:
 		return false
 	var mask := _dir_mask(dir)
@@ -103,15 +108,21 @@ static func _dir_mask(dir: Vector2i) -> int:
 
 static func _shortest_path_length(walls: Array[int], width: int, height: int, start: Vector2i, goal: Vector2i) -> int:
 	var queue: Array[Vector2i] = [start]
-	var distance := {start: 0}
+	var distance: Dictionary = {start: 0}
+	var directions: Array[Vector2i] = [
+		Vector2i(0, -1),
+		Vector2i(1, 0),
+		Vector2i(0, 1),
+		Vector2i(-1, 0),
+	]
 	var head := 0
 	while head < queue.size():
 		var p: Vector2i = queue[head]
 		head += 1
 		if p == goal:
 			return int(distance[p])
-		for d in [Vector2i(0,-1), Vector2i(1,0), Vector2i(0,1), Vector2i(-1,0)]:
-			var n := p + d
+		for d in directions:
+			var n: Vector2i = p + d
 			if n.x < 0 or n.y < 0 or n.x >= width or n.y >= height:
 				continue
 			if (walls[p.y * width + p.x] & _dir_mask(d)) != 0:
