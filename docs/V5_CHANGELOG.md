@@ -1,40 +1,27 @@
-# Satoshi Maze V5 · Visual Edition
+# Satoshi Maze V5 — ILLU ENTERTAINMENT & Legal
 
-## Experience
+## Intro del estudio
 
-- Campaign reorganized visually into 10 themed worlds.
-- Animated home hero and live maze preview.
-- Reactive background art per world and equipped theme.
-- Smooth player interpolation and reactive player lighting.
-- Wall-bump feedback, enhanced portals and explored fog memory.
-- Optional minimap for large mazes.
-- Reduced Motion accessibility setting.
+- Splash/intro animada de **ILLU ENTERTAINMENT** al iniciar la app.
+- Fade de entrada, pausa breve y fade de salida.
+- El usuario puede tocar para continuar sin esperar la animación completa.
+- La marca también aparece de forma discreta en el menú principal y en Ajustes.
 
-## Results
+## Privacidad y términos
 
-- Short victory hold before the result screen so the finish effect can be seen.
-- Progressive star reveal.
-- Efficiency progress bar and medal emphasis.
-- New personal-best feedback.
-- World-complete celebration on every tenth campaign level.
+- Política de Privacidad integrada en el APK.
+- Términos y Condiciones de Uso integrados en el APK.
+- Ambos documentos son desplazables con `TouchScrollContainer`.
+- Contenido localizado en español, inglés, portugués, francés, alemán e italiano.
+- Se documentan almacenamiento local, identificador de instalación, pagos Lightning, rankings opcionales, conservación, eliminación, seguridad, compras y derechos obligatorios del consumidor.
 
-## Store & collection
+## Ajustes
 
-- Animated product previews.
-- Rarity presentation: Standard, Rare, Epic, Legendary and Achievement.
-- Full collection gallery including locked silhouettes.
-- New Aura cosmetic slot.
-- Lightning Aura, Quantum Aura, Sats Halo and Prism Aura.
-- Quantum Motion bundle.
-- Master Crown achievement reward at 200 stars.
+- La pantalla de Ajustes ahora usa scroll táctil para evitar desbordes en teléfonos pequeños.
+- Nuevos accesos: **Política de Privacidad** y **Términos y Condiciones**.
 
-## Performance
+## Compatibilidad y pagos
 
-- Store previews redraw at a capped 24 FPS and only when intersecting the viewport.
-- Static backdrops and menu hero stop redrawing when Reduced Motion is enabled.
-
-## Compatibility
-
-- PaymentManager is unchanged from V4.
-- Existing V3/V4 save file path is unchanged.
-- Existing purchases, progression and equipped cosmetics are preserved.
+- Se mantiene `user://satoshi_maze_save_v3.json`, por lo que no se pierde progreso ni compras existentes.
+- `payment_manager.gd` no fue modificado en V5.
+- Pago directo LNURL-pay y verificación segura del invoice se mantienen sin cambios.
