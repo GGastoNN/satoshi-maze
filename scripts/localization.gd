@@ -11,6 +11,45 @@ const LANGUAGE_NAMES := {
 	"it": "Italiano",
 }
 
+
+const BRAND_STRINGS := {
+	"en": {
+		"PRESENTA": "PRESENTS",
+		"TOCÁ PARA CONTINUAR": "TAP TO CONTINUE",
+		"Satoshi Maze es un juego de ILLU ENTERTAINMENT.": "Satoshi Maze is a game by ILLU ENTERTAINMENT.",
+		"POLÍTICA DE PRIVACIDAD": "PRIVACY POLICY",
+		"TÉRMINOS Y CONDICIONES": "TERMS AND CONDITIONS",
+	},
+	"pt": {
+		"PRESENTA": "APRESENTA",
+		"TOCÁ PARA CONTINUAR": "TOQUE PARA CONTINUAR",
+		"Satoshi Maze es un juego de ILLU ENTERTAINMENT.": "Satoshi Maze é um jogo da ILLU ENTERTAINMENT.",
+		"POLÍTICA DE PRIVACIDAD": "POLÍTICA DE PRIVACIDADE",
+		"TÉRMINOS Y CONDICIONES": "TERMOS E CONDIÇÕES",
+	},
+	"fr": {
+		"PRESENTA": "PRÉSENTE",
+		"TOCÁ PARA CONTINUAR": "TOUCHEZ POUR CONTINUER",
+		"Satoshi Maze es un juego de ILLU ENTERTAINMENT.": "Satoshi Maze est un jeu d’ILLU ENTERTAINMENT.",
+		"POLÍTICA DE PRIVACIDAD": "POLITIQUE DE CONFIDENTIALITÉ",
+		"TÉRMINOS Y CONDICIONES": "CONDITIONS D’UTILISATION",
+	},
+	"de": {
+		"PRESENTA": "PRÄSENTIERT",
+		"TOCÁ PARA CONTINUAR": "TIPPEN ZUM FORTFAHREN",
+		"Satoshi Maze es un juego de ILLU ENTERTAINMENT.": "Satoshi Maze ist ein Spiel von ILLU ENTERTAINMENT.",
+		"POLÍTICA DE PRIVACIDAD": "DATENSCHUTZERKLÄRUNG",
+		"TÉRMINOS Y CONDICIONES": "NUTZUNGSBEDINGUNGEN",
+	},
+	"it": {
+		"PRESENTA": "PRESENTA",
+		"TOCÁ PARA CONTINUAR": "TOCCA PER CONTINUARE",
+		"Satoshi Maze es un juego de ILLU ENTERTAINMENT.": "Satoshi Maze è un gioco di ILLU ENTERTAINMENT.",
+		"POLÍTICA DE PRIVACIDAD": "INFORMATIVA SULLA PRIVACY",
+		"TÉRMINOS Y CONDICIONES": "TERMINI E CONDIZIONI",
+	},
+}
+
 static var _current_language: String = "en"
 static var _override: String = "auto"
 
@@ -313,6 +352,9 @@ static func override_value() -> String:
 static func text(source: String) -> String:
 	if _current_language == "es":
 		return source
+	var brand_dictionary: Dictionary = BRAND_STRINGS.get(_current_language, {})
+	if brand_dictionary.has(source):
+		return str(brand_dictionary[source])
 	var extra_dictionary: Dictionary = EXTRA_STRINGS.get(_current_language, {})
 	if extra_dictionary.has(source):
 		return str(extra_dictionary[source])

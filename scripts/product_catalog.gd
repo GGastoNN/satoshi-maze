@@ -27,11 +27,6 @@ const PRODUCTS := {
 		"description": "Void + Glitch Trail + Synthwave + Portal Collapse. El set visual más intenso.", "accent": "a78bfa",
 		"items": ["skin_void", "trail_glitch", "theme_synthwave", "victory_fx_portal"],
 	},
-	"bundle_quantum": {
-		"name": "QUANTUM MOTION", "kind": "bundle", "price_sats": 49, "icon": "◎",
-		"description": "Quantum + Orbit Trail + Quantum Aura. Movimiento orbital completo con precio especial.", "accent": "6de7ff",
-		"items": ["skin_quantum", "trail_orbit", "aura_quantum"],
-	},
 
 	# Skins
 	"skin_btc_gold": {
@@ -97,24 +92,6 @@ const PRODUCTS := {
 		"description": "Fragmentos digitales desplazados con apariencia de señal rota.", "accent": "ff5fd7",
 	},
 
-	# Auras
-	"aura_lightning": {
-		"name": "LIGHTNING AURA", "kind": "aura", "price_sats": 17, "icon": "ϟ",
-		"description": "Arcos eléctricos orbitan tu skin mientras avanzás.", "accent": "ffe66d",
-	},
-	"aura_quantum": {
-		"name": "QUANTUM AURA", "kind": "aura", "price_sats": 18, "icon": "◎",
-		"description": "Dos anillos energéticos giran en sentidos opuestos alrededor del jugador.", "accent": "6de7ff",
-	},
-	"aura_sats": {
-		"name": "SATS HALO", "kind": "aura", "price_sats": 16, "icon": "₿",
-		"description": "Halo dorado con pequeños sats luminosos en órbita.", "accent": "ffbd2e",
-	},
-	"aura_prism": {
-		"name": "PRISM AURA", "kind": "aura", "price_sats": 19, "icon": "◇",
-		"description": "Capas cyan, magenta y violeta crean un halo prismático animado.", "accent": "ff70d9",
-	},
-
 	# Themes
 	"theme_sunset": {
 		"name": "SUNSET GRID", "kind": "theme", "price_sats": 22, "icon": "◫",
@@ -176,10 +153,6 @@ const REWARD_PRODUCTS := {
 	"theme_deep": {
 		"name": "DEEP SPACE", "kind": "theme", "price_sats": 0, "icon": "◌",
 		"description": "Recompensa por alcanzar 120 estrellas.", "accent": "8b5cf6", "reward": "120 estrellas"
-	},
-	"aura_master": {
-		"name": "MASTER CROWN", "kind": "aura", "price_sats": 0, "icon": "♛",
-		"description": "Recompensa por alcanzar 200 estrellas.", "accent": "ffd166", "reward": "200 estrellas"
 	},
 }
 
@@ -243,50 +216,6 @@ const NEW_PRODUCT_TEXT := {
 	},
 }
 
-const V5_PRODUCT_TEXT := {
-	"en": {
-		"QUANTUM MOTION": "QUANTUM MOTION",
-		"Quantum + Orbit Trail + Quantum Aura. Movimiento orbital completo con precio especial.": "Quantum + Orbit Trail + Quantum Aura. A complete orbital set at a special price.",
-		"LIGHTNING AURA": "LIGHTNING AURA", "Arcos eléctricos orbitan tu skin mientras avanzás.": "Electric arcs orbit your skin as you move.",
-		"QUANTUM AURA": "QUANTUM AURA", "Dos anillos energéticos giran en sentidos opuestos alrededor del jugador.": "Two energy rings rotate in opposite directions around the player.",
-		"SATS HALO": "SATS HALO", "Halo dorado con pequeños sats luminosos en órbita.": "Golden halo with tiny glowing sats in orbit.",
-		"PRISM AURA": "PRISM AURA", "Capas cyan, magenta y violeta crean un halo prismático animado.": "Cyan, magenta and violet layers create an animated prismatic halo.",
-		"MASTER CROWN": "MASTER CROWN", "Recompensa por alcanzar 200 estrellas.": "Reward for reaching 200 stars.", "200 estrellas": "200 stars",
-	},
-	"pt": {
-		"Quantum + Orbit Trail + Quantum Aura. Movimiento orbital completo con precio especial.": "Quantum + Orbit Trail + Quantum Aura. Um conjunto orbital completo com preço especial.",
-		"Arcos eléctricos orbitan tu skin mientras avanzás.": "Arcos elétricos orbitam sua skin enquanto você avança.",
-		"Dos anillos energéticos giran en sentidos opuestos alrededor del jugador.": "Dois anéis de energia giram em sentidos opostos ao redor do jogador.",
-		"Halo dorado con pequeños sats luminosos en órbita.": "Halo dourado com pequenos sats luminosos em órbita.",
-		"Capas cyan, magenta y violeta crean un halo prismático animado.": "Camadas ciano, magenta e violeta criam um halo prismático animado.",
-		"Recompensa por alcanzar 200 estrellas.": "Recompensa por alcançar 200 estrelas.", "200 estrellas": "200 estrelas",
-	},
-	"fr": {
-		"Quantum + Orbit Trail + Quantum Aura. Movimiento orbital completo con precio especial.": "Quantum + Orbit Trail + Quantum Aura. Un ensemble orbital complet à prix spécial.",
-		"Arcos eléctricos orbitan tu skin mientras avanzás.": "Des arcs électriques orbitent autour de votre skin pendant vos déplacements.",
-		"Dos anillos energéticos giran en sentidos opuestos alrededor del jugador.": "Deux anneaux d'énergie tournent en sens opposés autour du joueur.",
-		"Halo dorado con pequeños sats luminosos en órbita.": "Halo doré avec de petits sats lumineux en orbite.",
-		"Capas cyan, magenta y violeta crean un halo prismático animado.": "Des couches cyan, magenta et violettes créent un halo prismatique animé.",
-		"Recompensa por alcanzar 200 estrellas.": "Récompense pour 200 étoiles.", "200 estrellas": "200 étoiles",
-	},
-	"de": {
-		"Quantum + Orbit Trail + Quantum Aura. Movimiento orbital completo con precio especial.": "Quantum + Orbit Trail + Quantum Aura. Ein komplettes Orbital-Set zum Sonderpreis.",
-		"Arcos eléctricos orbitan tu skin mientras avanzás.": "Elektrische Bögen kreisen beim Bewegen um deinen Skin.",
-		"Dos anillos energéticos giran en sentidos opuestos alrededor del jugador.": "Zwei Energieringe rotieren entgegengesetzt um den Spieler.",
-		"Halo dorado con pequeños sats luminosos en órbita.": "Goldener Halo mit kleinen leuchtenden Sats im Orbit.",
-		"Capas cyan, magenta y violeta crean un halo prismático animado.": "Cyan-, Magenta- und Violettschichten bilden einen animierten Prisma-Halo.",
-		"Recompensa por alcanzar 200 estrellas.": "Belohnung für 200 Sterne.", "200 estrellas": "200 Sterne",
-	},
-	"it": {
-		"Quantum + Orbit Trail + Quantum Aura. Movimiento orbital completo con precio especial.": "Quantum + Orbit Trail + Quantum Aura. Un set orbitale completo a prezzo speciale.",
-		"Arcos eléctricos orbitan tu skin mientras avanzás.": "Archi elettrici orbitano attorno alla skin mentre ti muovi.",
-		"Dos anillos energéticos giran en sentidos opuestos alrededor del jugador.": "Due anelli energetici ruotano in direzioni opposte intorno al giocatore.",
-		"Halo dorado con pequeños sats luminosos en órbita.": "Alone dorato con piccoli sats luminosi in orbita.",
-		"Capas cyan, magenta y violeta crean un halo prismático animado.": "Strati ciano, magenta e viola creano un alone prismatico animato.",
-		"Recompensa por alcanzar 200 estrellas.": "Ricompensa per 200 stelle.", "200 estrellas": "200 stelle",
-	},
-}
-
 static func get_product(product_id: String) -> Dictionary:
 	if product_id.begins_with("level_"):
 		var level := int(product_id.trim_prefix("level_"))
@@ -304,22 +233,16 @@ static func get_product(product_id: String) -> Dictionary:
 	item["name"] = _product_text(str(item.get("name", product_id)))
 	item["description"] = _product_text(str(item.get("description", "")))
 	if item.has("reward"):
-		item["reward"] = _product_text(str(item.get("reward", "")))
+		item["reward"] = Localization.text(str(item.get("reward", "")))
 	return item
 
 static func _product_text(source: String) -> String:
 	var language: String = Localization.current_language()
 	if language == "es":
 		return source
-	var v5_dictionary: Dictionary = V5_PRODUCT_TEXT.get(language, {})
-	if v5_dictionary.has(source):
-		return str(v5_dictionary[source])
 	var dictionary: Dictionary = NEW_PRODUCT_TEXT.get(language, {})
 	if dictionary.has(source):
 		return str(dictionary[source])
-	var v5_english: Dictionary = V5_PRODUCT_TEXT.get("en", {})
-	if v5_english.has(source):
-		return str(v5_english[source])
 	var english: Dictionary = NEW_PRODUCT_TEXT.get("en", {})
 	if english.has(source):
 		return str(english[source])
@@ -328,10 +251,9 @@ static func _product_text(source: String) -> String:
 static func list_store_products() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var featured: Array[String] = [
-		"full_pass", "pro_stats", "bundle_neon", "bundle_bitcoin", "bundle_void", "bundle_quantum",
+		"full_pass", "pro_stats", "bundle_neon", "bundle_bitcoin", "bundle_void",
 		"skin_btc_gold", "skin_plasma", "skin_emerald", "skin_void", "skin_ruby", "skin_ice", "skin_solar", "skin_quantum",
 		"trail_comet", "trail_lightning", "trail_pixels", "trail_neon", "trail_firefly", "trail_orbit", "trail_glitch",
-		"aura_lightning", "aura_quantum", "aura_sats", "aura_prism",
 		"theme_sunset", "theme_mono", "theme_matrix", "theme_arctic", "theme_lava", "theme_ocean", "theme_synthwave",
 		"victory_fx_supernova", "victory_fx_thunder", "victory_fx_portal", "victory_fx_sats",
 	]
@@ -346,31 +268,10 @@ static func list_collection_products() -> Array[Dictionary]:
 	return out
 
 static func default_cosmetics() -> Dictionary:
-	return {"skin": "default", "trail": "default", "theme": "auto", "victory_fx": "default", "aura": "default"}
+	return {"skin": "default", "trail": "default", "theme": "auto", "victory_fx": "default"}
 
 static func is_cosmetic_kind(kind: String) -> bool:
-	return kind in ["skin", "trail", "theme", "victory_fx", "aura"]
-
-static func rarity(product: Dictionary) -> String:
-	if product.has("reward"):
-		return "ACHIEVEMENT"
-	var kind := str(product.get("kind", ""))
-	var price := int(product.get("price_sats", 0))
-	if kind == "bundle" or price >= 21:
-		return "LEGENDARY"
-	if price >= 16:
-		return "EPIC"
-	if price >= 12:
-		return "RARE"
-	return "STANDARD"
-
-static func rarity_color(rarity_name: String) -> Color:
-	match rarity_name:
-		"LEGENDARY": return Color("ffd166")
-		"EPIC": return Color("c77dff")
-		"RARE": return Color("58e7ff")
-		"ACHIEVEMENT": return Color("52ff9a")
-		_: return Color("91a8c7")
+	return kind in ["skin", "trail", "theme", "victory_fx"]
 
 static func bundle_items(product_id: String) -> Array:
 	var product: Dictionary = PRODUCTS.get(product_id, {})
