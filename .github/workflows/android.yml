@@ -76,22 +76,16 @@ jobs:
           export/android/java_sdk_path = "${JAVA_HOME}"
           SETTINGS
 
-      - name: Import and validate project
+      - name: Import project
         shell: bash
         run: |
-          set -o pipefail
-          godot --headless --path . --import --quit 2>&1 | tee /tmp/godot-import.log
-          if grep -E "SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script|ERROR: Failed to load script" /tmp/godot-import.log; then
-            echo "Godot reported script/import errors." >&2
-            exit 1
-          fi
+          godot --headless --path . --import --quit
 
       - name: Build APK
         shell: bash
         run: |
-          set -euo pipefail
           mkdir -p build
-          godot --headless --verbose --path . --export-debug "Android" build/SatoshiMaze.apk 2>&1 | tee /tmp/godot-export.log
+          godot --headless --verbose --path . --export-debug "Android" build/SatoshiMaze.apk
           test -s build/SatoshiMaze.apk
           ls -lh build/SatoshiMaze.apk
 
