@@ -22,9 +22,13 @@ var touch_start := Vector2.ZERO
 var particles: Array[Dictionary] = []
 var has_key := false
 var bump_count := 0
+var bump_anim_remaining := 0.0
+var bump_direction := Vector2i.ZERO
 var ghost_path: Array[Vector2i] = []
 var ghost_total_time := 0.0
 var ghost_elapsed := 0.0
+
+const BUMP_ANIM_DURATION := 0.18
 
 const BASE_PALETTES := [
 	{"bg": Color("10152f"), "floor": Color("172047"), "wall": Color("61e7ff"), "accent": Color("ff4fd8"), "goal": Color("ffd166")},
@@ -64,6 +68,8 @@ func setup(new_maze: Dictionary, new_level: int, new_cosmetics: Dictionary, ghos
 	particles.clear()
 	has_key = false
 	bump_count = 0
+	bump_anim_remaining = 0.0
+	bump_direction = Vector2i.ZERO
 	ghost_elapsed = 0.0
 	ghost_path.clear()
 	for ghost_point in ghost.get("path", []):
@@ -82,6 +88,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	pulse += delta
 	ghost_elapsed += delta
+	if bump_anim_remaining > 0.0:
+		bump_anim_remaining = maxf(0.0, bump_anim_remaining - delta)
 	for p in particles:
 		p.pos += p.vel * delta
 		p.life -= delta
@@ -91,7 +99,7 @@ func _process(delta: float) -> void:
 func move_player(dir: Vector2i) -> void:
 	if maze.is_empty() or not MazeGenerator.can_move(maze, player, dir):
 		bump_count += 1
-		_spawn_bump()
+		_spawn_bump(dir)
 		bumped.emit()
 		return
 	_step(dir)
@@ -115,7 +123,7 @@ func _step(dir: Vector2i) -> void:
 	moved.emit(moves, collected.size())
 	if player == maze.goal:
 		if bool(maze.get("requires_key", false)) and not has_key:
-			_spawn_bump()
+			_spawn_bump(dir)
 			return
 		_spawn_victory_effect(55 if bool(maze.get("boss", false)) else 40)
 		goal_reached.emit(moves, collected.size())
@@ -191,6 +199,7 @@ func _geometry() -> Dictionary:
 	var cell: float = minf((size.x - pad * 2.0) / float(w), (size.y - pad * 2.0) / float(h))
 	var board_size := Vector2(cell * w, cell * h)
 	var origin := (size - board_size) * 0.5
+	origin += _bump_shake_offset(cell)
 	return {"cell": cell, "origin": origin}
 
 func _cell_center(p: Vector2i) -> Vector2:
@@ -222,6 +231,7 @@ func _draw() -> void:
 	_draw_specials(cell)
 	_draw_trail(cell)
 	_draw_walls(origin, cell, w, h)
+	_draw_bump_flash(origin, cell)
 	_draw_ghost(cell)
 	_draw_player(cell)
 	_draw_particles()
@@ -327,6 +337,10 @@ func _draw_ghost(cell: float) -> void:
 
 func _draw_player(cell: float) -> void:
 	var pp := _cell_center(player)
+	if bump_anim_remaining > 0.0 and bump_direction != Vector2i.ZERO:
+		var impact_phase: float = _bump_phase()
+		var recoil: float = sin(impact_phase * PI) * cell * 0.12
+		pp += Vector2(bump_direction) * recoil
 	var pr := cell * 0.22
 	var skin := str(cosmetics.get("skin", "default"))
 	var color: Color = palette.accent
@@ -435,8 +449,72 @@ func _spawn_victory_effect(base_count: int) -> void:
 		"victory_fx_sats": _spawn_sparks(base_count + 56, Color("ffbd2e"))
 		_: _spawn_sparks(base_count)
 
-func _spawn_bump() -> void:
-	_spawn_sparks(4)
+func _spawn_bump(dir: Vector2i = Vector2i.ZERO) -> void:
+	bump_direction = dir
+	bump_anim_remaining = BUMP_ANIM_DURATION
+	if dir == Vector2i.ZERO:
+		_spawn_sparks(8, palette.wall)
+		queue_redraw()
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var direction := Vector2(dir)
+	var normal := -direction
+	var tangent := Vector2(-normal.y, normal.x)
+	var impact_center := _cell_center(player) + direction * float(_geometry().cell) * 0.43
+	var spark_color: Color = palette.wall.lightened(0.34)
+	for _i in 12:
+		var normal_speed: float = rng.randf_range(32.0, 105.0)
+		var tangent_speed: float = rng.randf_range(-68.0, 68.0)
+		var life: float = rng.randf_range(0.12, 0.30)
+		particles.append({
+			"pos": impact_center,
+			"vel": normal * normal_speed + tangent * tangent_speed,
+			"life": life,
+			"max_life": life,
+			"radius": rng.randf_range(1.4, 3.2),
+			"color": spark_color,
+		})
+	queue_redraw()
+
+func _bump_phase() -> float:
+	if bump_anim_remaining <= 0.0:
+		return 1.0
+	return 1.0 - clampf(bump_anim_remaining / BUMP_ANIM_DURATION, 0.0, 1.0)
+
+func _bump_shake_offset(cell: float) -> Vector2:
+	if bump_anim_remaining <= 0.0:
+		return Vector2.ZERO
+	var impact_phase: float = _bump_phase()
+	var strength: float = 1.0 - impact_phase
+	var perpendicular := Vector2(-float(bump_direction.y), float(bump_direction.x))
+	if perpendicular == Vector2.ZERO:
+		perpendicular = Vector2.RIGHT
+	return perpendicular * sin(impact_phase * TAU * 3.5) * cell * 0.038 * strength
+
+func _draw_bump_flash(origin: Vector2, cell: float) -> void:
+	if bump_anim_remaining <= 0.0 or bump_direction == Vector2i.ZERO:
+		return
+	var wall_origin := origin + Vector2(float(player.x) * cell, float(player.y) * cell)
+	var a := wall_origin
+	var b := wall_origin
+	if bump_direction == Vector2i.UP:
+		a = wall_origin
+		b = wall_origin + Vector2(cell, 0.0)
+	elif bump_direction == Vector2i.DOWN:
+		a = wall_origin + Vector2(0.0, cell)
+		b = wall_origin + Vector2(cell, cell)
+	elif bump_direction == Vector2i.LEFT:
+		a = wall_origin
+		b = wall_origin + Vector2(0.0, cell)
+	elif bump_direction == Vector2i.RIGHT:
+		a = wall_origin + Vector2(cell, 0.0)
+		b = wall_origin + Vector2(cell, cell)
+	var strength: float = clampf(bump_anim_remaining / BUMP_ANIM_DURATION, 0.0, 1.0)
+	var flash_color: Color = palette.wall.lightened(0.55)
+	draw_line(a, b, Color(flash_color, 0.12 * strength), 16.0, true)
+	draw_line(a, b, Color(flash_color, 0.32 * strength), 8.0, true)
+	draw_line(a, b, Color.WHITE, 2.8 + 1.6 * strength, true)
 
 func get_run_path() -> Array:
 	return run_path.duplicate()

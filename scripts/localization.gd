@@ -14,6 +14,10 @@ const LANGUAGE_NAMES := {
 
 const BRAND_STRINGS := {
 	"en": {
+		"FEEDBACK HÁPTICO": "HAPTIC FEEDBACK",
+		"Vibración breve al chocar contra una pared.": "Brief vibration when you hit a wall.",
+		"ACTIVADO": "ON",
+		"DESACTIVADO": "OFF",
 		"PRESENTA": "PRESENTS",
 		"TOCÁ PARA CONTINUAR": "TAP TO CONTINUE",
 		"Satoshi Maze es un juego de ILLU ENTERTAINMENT.": "Satoshi Maze is a game by ILLU ENTERTAINMENT.",
@@ -21,6 +25,10 @@ const BRAND_STRINGS := {
 		"TÉRMINOS Y CONDICIONES": "TERMS AND CONDITIONS",
 	},
 	"pt": {
+		"FEEDBACK HÁPTICO": "FEEDBACK HÁPTICO",
+		"Vibración breve al chocar contra una pared.": "Vibração breve ao bater em uma parede.",
+		"ACTIVADO": "ATIVADO",
+		"DESACTIVADO": "DESATIVADO",
 		"PRESENTA": "APRESENTA",
 		"TOCÁ PARA CONTINUAR": "TOQUE PARA CONTINUAR",
 		"Satoshi Maze es un juego de ILLU ENTERTAINMENT.": "Satoshi Maze é um jogo da ILLU ENTERTAINMENT.",
@@ -28,6 +36,10 @@ const BRAND_STRINGS := {
 		"TÉRMINOS Y CONDICIONES": "TERMOS E CONDIÇÕES",
 	},
 	"fr": {
+		"FEEDBACK HÁPTICO": "RETOUR HAPTIQUE",
+		"Vibración breve al chocar contra una pared.": "Brève vibration lors d’un choc contre un mur.",
+		"ACTIVADO": "ACTIVÉ",
+		"DESACTIVADO": "DÉSACTIVÉ",
 		"PRESENTA": "PRÉSENTE",
 		"TOCÁ PARA CONTINUAR": "TOUCHEZ POUR CONTINUER",
 		"Satoshi Maze es un juego de ILLU ENTERTAINMENT.": "Satoshi Maze est un jeu d’ILLU ENTERTAINMENT.",
@@ -35,6 +47,10 @@ const BRAND_STRINGS := {
 		"TÉRMINOS Y CONDICIONES": "CONDITIONS D’UTILISATION",
 	},
 	"de": {
+		"FEEDBACK HÁPTICO": "HAPTISCHES FEEDBACK",
+		"Vibración breve al chocar contra una pared.": "Kurze Vibration beim Aufprall auf eine Wand.",
+		"ACTIVADO": "EIN",
+		"DESACTIVADO": "AUS",
 		"PRESENTA": "PRÄSENTIERT",
 		"TOCÁ PARA CONTINUAR": "TIPPEN ZUM FORTFAHREN",
 		"Satoshi Maze es un juego de ILLU ENTERTAINMENT.": "Satoshi Maze ist ein Spiel von ILLU ENTERTAINMENT.",
@@ -42,6 +58,10 @@ const BRAND_STRINGS := {
 		"TÉRMINOS Y CONDICIONES": "NUTZUNGSBEDINGUNGEN",
 	},
 	"it": {
+		"FEEDBACK HÁPTICO": "FEEDBACK APTICO",
+		"Vibración breve al chocar contra una pared.": "Breve vibrazione quando colpisci una parete.",
+		"ACTIVADO": "ATTIVO",
+		"DESACTIVADO": "DISATTIVO",
 		"PRESENTA": "PRESENTA",
 		"TOCÁ PARA CONTINUAR": "TOCCA PER CONTINUARE",
 		"Satoshi Maze es un juego de ILLU ENTERTAINMENT.": "Satoshi Maze è un gioco di ILLU ENTERTAINMENT.",

@@ -22,6 +22,7 @@ var last_daily_day := -1
 var infinite_best_round := 0
 var install_id := ""
 var language_override := "auto"
+var haptics_enabled := true
 
 func load_data() -> void:
 	var source_path: String = AppConfig.SAVE_PATH
@@ -68,6 +69,7 @@ func _apply_data(data: Dictionary) -> void:
 	infinite_best_round = int(data.get("infinite_best_round", 0))
 	install_id = str(data.get("install_id", ""))
 	language_override = str(data.get("language_override", "auto"))
+	haptics_enabled = bool(data.get("haptics_enabled", true))
 
 func _migrate_legacy() -> void:
 	if not FileAccess.file_exists(AppConfig.LEGACY_SAVE_PATH):
@@ -125,6 +127,7 @@ func save_data() -> void:
 		"infinite_best_round": infinite_best_round,
 		"install_id": install_id,
 		"language_override": language_override,
+		"haptics_enabled": haptics_enabled,
 	}))
 
 func is_unlocked(level: int) -> bool:
@@ -256,6 +259,10 @@ func get_best_text(level_key: String) -> String:
 
 func set_language_override(value: String) -> void:
 	language_override = value if value == "auto" or value in Localization.SUPPORTED_LANGUAGES else "auto"
+	save_data()
+
+func set_haptics_enabled(value: bool) -> void:
+	haptics_enabled = value
 	save_data()
 
 func get_level_stars(level: int) -> int:

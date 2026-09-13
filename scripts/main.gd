@@ -20,6 +20,7 @@ var purchase_actions: VBoxContainer
 var leaderboard_box: VBoxContainer
 var store_filter := "all"
 var audio_move: AudioStreamPlayer
+var audio_bump: AudioStreamPlayer
 var audio_orb: AudioStreamPlayer
 var audio_win: AudioStreamPlayer
 var intro_tween: Tween
@@ -105,6 +106,10 @@ func _build_audio() -> void:
 	audio_move.stream = load("res://assets/audio/move.wav")
 	audio_move.volume_db = -12
 	add_child(audio_move)
+	audio_bump = AudioStreamPlayer.new()
+	audio_bump.stream = load("res://assets/audio/bump.wav")
+	audio_bump.volume_db = -8
+	add_child(audio_bump)
 	audio_orb = AudioStreamPlayer.new()
 	audio_orb.stream = load("res://assets/audio/orb.wav")
 	audio_orb.volume_db = -7
@@ -342,6 +347,7 @@ func _start_maze(maze: Dictionary, level_for_palette: int, run_key: String, mode
 	board.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	board.setup(current_maze, current_level, save.equipped, save.get_ghost(current_run_key))
 	board.moved.connect(_on_board_moved)
+	board.bumped.connect(_on_board_bumped)
 	board.orb_collected.connect(func(): _play(audio_orb))
 	board.key_collected.connect(func(): _play(audio_orb))
 	board.goal_reached.connect(_on_goal_reached)
@@ -631,6 +637,10 @@ func show_settings() -> void:
 		var accent: Color = GREEN if save.language_override == code else CYAN
 		list.add_child(_button(str(Localization.LANGUAGE_NAMES[code]), Callable(self, "_set_language").bind(code), false, accent))
 
+	list.add_child(_card(Localization.text("FEEDBACK HÁPTICO"), Localization.text("Vibración breve al chocar contra una pared."), PINK))
+	var haptic_label: String = Localization.text("ACTIVADO") if save.haptics_enabled else Localization.text("DESACTIVADO")
+	list.add_child(_button(haptic_label, func(): _toggle_haptics(), true, GREEN if save.haptics_enabled else MUTED))
+
 	list.add_child(_card("ILLU ENTERTAINMENT", "Satoshi Maze es un juego de ILLU ENTERTAINMENT.", PINK))
 	list.add_child(_button("POLÍTICA DE PRIVACIDAD", func(): show_privacy_policy(), true, CYAN))
 	list.add_child(_button("TÉRMINOS Y CONDICIONES", func(): show_terms(), true, GOLD))
@@ -671,6 +681,12 @@ func _show_legal_document(intro: String, sections: Array, accent: Color) -> void
 func _set_language(code: String) -> void:
 	save.set_language_override(code)
 	Localization.configure(code)
+	show_settings()
+
+func _toggle_haptics() -> void:
+	save.set_haptics_enabled(not save.haptics_enabled)
+	if save.haptics_enabled and OS.get_name() == "Android":
+		Input.vibrate_handheld(20, 0.25)
 	show_settings()
 
 func show_purchase_product(product_id: String) -> void:
@@ -737,6 +753,11 @@ func _on_payment_error(text: String) -> void:
 
 func _on_board_moved(_moves: int, _orbs: int) -> void:
 	_play(audio_move)
+
+func _on_board_bumped() -> void:
+	_play(audio_bump)
+	if save.haptics_enabled and OS.get_name() == "Android":
+		Input.vibrate_handheld(28, 0.38)
 
 func _on_goal_reached(moves: int, orbs: int) -> void:
 	if not game_active:
