@@ -25,6 +25,10 @@ const BRAND_STRINGS := {
 		"Satoshi Maze es un juego de ILLU ENTERTAINMENT.": "Satoshi Maze is a game by ILLU ENTERTAINMENT.",
 		"POLÍTICA DE PRIVACIDAD": "PRIVACY POLICY",
 		"TÉRMINOS Y CONDICIONES": "TERMS AND CONDITIONS",
+		"¿SALIR DE SATOSHI MAZE?": "EXIT SATOSHI MAZE?",
+		"¿Querés cerrar el juego?": "Do you want to close the game?",
+		"CANCELAR": "CANCEL",
+		"SALIR": "EXIT",
 	},
 	"pt": {
 		"FEEDBACK HÁPTICO": "FEEDBACK HÁPTICO",
@@ -38,6 +42,10 @@ const BRAND_STRINGS := {
 		"Satoshi Maze es un juego de ILLU ENTERTAINMENT.": "Satoshi Maze é um jogo da ILLU ENTERTAINMENT.",
 		"POLÍTICA DE PRIVACIDAD": "POLÍTICA DE PRIVACIDADE",
 		"TÉRMINOS Y CONDICIONES": "TERMOS E CONDIÇÕES",
+		"¿SALIR DE SATOSHI MAZE?": "SAIR DO SATOSHI MAZE?",
+		"¿Querés cerrar el juego?": "Deseja fechar o jogo?",
+		"CANCELAR": "CANCELAR",
+		"SALIR": "SAIR",
 	},
 	"fr": {
 		"FEEDBACK HÁPTICO": "RETOUR HAPTIQUE",
@@ -51,6 +59,10 @@ const BRAND_STRINGS := {
 		"Satoshi Maze es un juego de ILLU ENTERTAINMENT.": "Satoshi Maze est un jeu d’ILLU ENTERTAINMENT.",
 		"POLÍTICA DE PRIVACIDAD": "POLITIQUE DE CONFIDENTIALITÉ",
 		"TÉRMINOS Y CONDICIONES": "CONDITIONS D’UTILISATION",
+		"¿SALIR DE SATOSHI MAZE?": "QUITTER SATOSHI MAZE ?",
+		"¿Querés cerrar el juego?": "Voulez-vous fermer le jeu ?",
+		"CANCELAR": "ANNULER",
+		"SALIR": "QUITTER",
 	},
 	"de": {
 		"FEEDBACK HÁPTICO": "HAPTISCHES FEEDBACK",
@@ -64,6 +76,10 @@ const BRAND_STRINGS := {
 		"Satoshi Maze es un juego de ILLU ENTERTAINMENT.": "Satoshi Maze ist ein Spiel von ILLU ENTERTAINMENT.",
 		"POLÍTICA DE PRIVACIDAD": "DATENSCHUTZERKLÄRUNG",
 		"TÉRMINOS Y CONDICIONES": "NUTZUNGSBEDINGUNGEN",
+		"¿SALIR DE SATOSHI MAZE?": "SATOSHI MAZE BEENDEN?",
+		"¿Querés cerrar el juego?": "Möchtest du das Spiel schließen?",
+		"CANCELAR": "ABBRECHEN",
+		"SALIR": "BEENDEN",
 	},
 	"it": {
 		"FEEDBACK HÁPTICO": "FEEDBACK APTICO",
@@ -77,6 +93,10 @@ const BRAND_STRINGS := {
 		"Satoshi Maze es un juego de ILLU ENTERTAINMENT.": "Satoshi Maze è un gioco di ILLU ENTERTAINMENT.",
 		"POLÍTICA DE PRIVACIDAD": "INFORMATIVA SULLA PRIVACY",
 		"TÉRMINOS Y CONDICIONES": "TERMINI E CONDIZIONI",
+		"¿SALIR DE SATOSHI MAZE?": "USCIRE DA SATOSHI MAZE?",
+		"¿Querés cerrar el juego?": "Vuoi chiudere il gioco?",
+		"CANCELAR": "ANNULLA",
+		"SALIR": "ESCI",
 	},
 }
 

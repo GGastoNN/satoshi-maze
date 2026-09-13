@@ -29,6 +29,7 @@ var audio_intro: AudioStreamPlayer
 var intro_tween: Tween
 var intro_tweens: Array[Tween] = []
 var intro_fx: Control
+var exit_overlay: Control
 
 const TEXT := Color("eaf5ff")
 const MUTED := Color("91a8c7")
@@ -40,6 +41,9 @@ const DANGER := Color("ff718d")
 
 func _ready() -> void:
 	set_process(true)
+	# Android must not close the app automatically when the system Back action is used.
+	get_tree().quit_on_go_back = false
+	get_window().go_back_requested.connect(_on_system_back_requested)
 	save.load_data()
 	Localization.configure(save.language_override)
 	_build_shell()
@@ -69,9 +73,8 @@ func _process(_delta: float) -> void:
 		else:
 			hud_label.text = Localization.f("hud", [board.moves, elapsed, board.collected.size(), key_text])
 
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
-		_back()
+func _on_system_back_requested() -> void:
+	_back()
 
 func _input(event: InputEvent) -> void:
 	if current_screen != "intro":
@@ -993,6 +996,10 @@ func _dir_button(text: String, dir: Vector2i) -> Button:
 	return b
 
 func _back() -> void:
+	# Back closes the exit prompt first instead of leaving the application.
+	if exit_overlay != null and is_instance_valid(exit_overlay):
+		_dismiss_exit_confirmation()
+		return
 	match current_screen:
 		"game": _leave_game()
 		"intro": _finish_intro()
@@ -1000,7 +1007,82 @@ func _back() -> void:
 		"privacy", "terms": show_settings()
 		"purchase": _purchase_back()
 		"result": show_menu()
-		_: get_tree().quit()
+		"menu": _show_exit_confirmation()
+		_: show_menu()
+
+func _show_exit_confirmation() -> void:
+	if exit_overlay != null and is_instance_valid(exit_overlay):
+		return
+
+	exit_overlay = Control.new()
+	exit_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	exit_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	exit_overlay.z_index = 100
+	add_child(exit_overlay)
+
+	var shade := ColorRect.new()
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.color = Color(0.01, 0.015, 0.05, 0.78)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	exit_overlay.add_child(shade)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	exit_overlay.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(560, 0)
+	panel.add_theme_stylebox_override("panel", _panel(Color("111a34"), Color(PINK, 0.72), 24))
+	panel.modulate = Color(1, 1, 1, 0)
+	panel.scale = Vector2(0.94, 0.94)
+	panel.pivot_offset = Vector2(280, 150)
+	center.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	panel.add_child(margin)
+
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 14)
+	margin.add_child(content)
+
+	var icon := _label("↩", 48, GOLD)
+	icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	content.add_child(icon)
+	var title := _label("¿SALIR DE SATOSHI MAZE?", 27, TEXT)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	content.add_child(title)
+	var message := _label("¿Querés cerrar el juego?", 16, MUTED)
+	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(message)
+
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 10)
+	content.add_child(actions)
+	actions.add_child(_button("CANCELAR", func(): _dismiss_exit_confirmation(), false, CYAN))
+	actions.add_child(_button("SALIR", func(): _confirm_exit_game(), false, DANGER))
+
+	var tween := create_tween()
+	tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(panel, "modulate", Color.WHITE, 0.16)
+	tween.parallel().tween_property(panel, "scale", Vector2.ONE, 0.22)
+
+func _dismiss_exit_confirmation() -> void:
+	if exit_overlay == null or not is_instance_valid(exit_overlay):
+		exit_overlay = null
+		return
+	var overlay := exit_overlay
+	exit_overlay = null
+	overlay.queue_free()
+
+func _confirm_exit_game() -> void:
+	_dismiss_exit_confirmation()
+	get_tree().quit()
 
 func _add_topbar(title: String, back_cb: Callable) -> void:
 	var h := HBoxContainer.new()
@@ -1057,6 +1139,7 @@ func _spacer(height: float) -> void:
 	var c := Control.new(); c.custom_minimum_size = Vector2(0, height); screen_root.add_child(c)
 
 func _clear_screen() -> void:
+	_dismiss_exit_confirmation()
 	for child in screen_root.get_children():
 		screen_root.remove_child(child)
 		child.queue_free()
