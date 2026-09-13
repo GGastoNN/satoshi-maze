@@ -1,6 +1,15 @@
-# Satoshi Maze V5.1
+# Satoshi Maze V5.2
 
 Juego de laberintos para Android hecho con Godot 4.7.x, desarrollado por **ILLU ENTERTAINMENT**, con 100 niveles, desafíos Daily/Weekly, Infinite Run, Ghost Run, estrellas, modificadores, cosméticos y tienda Lightning.
+
+## Novedades V5.2
+
+- Intro cinematográfica en dos actos: **ILLU ENTERTAINMENT** → **Satoshi Maze**.
+- Fondo procedural con partículas, halos, anillos y trazos de laberinto animados.
+- Reveal por capas, destello de transición y entrada escalonada al menú principal.
+- Nuevo stinger corto de estudio, sin bloquear el acceso al juego.
+- La intro puede saltarse inmediatamente con toque, clic o tecla.
+- Taglines de la presentación localizados en los seis idiomas disponibles.
 
 ## Novedades V5.1
 
