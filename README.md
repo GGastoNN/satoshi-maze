@@ -57,3 +57,8 @@ El proyecto usa GL Compatibility y compresión ETC2/ASTC para Android.
 ## Ranking online
 
 Daily y Weekly funcionan sin servidor y guardan las mejores marcas localmente. El leaderboard global está desacoplado de los pagos y permanece desactivado mientras `LEADERBOARD_API_BASE` esté vacío.
+
+
+## Android Back navigation
+
+The system Back action is handled by the game. Internal screens navigate backward; Back from the main menu asks for confirmation before closing the app.
