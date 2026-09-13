@@ -1,5 +1,7 @@
 extends Control
 
+const StudioIntroFXScript = preload("res://scripts/studio_intro_fx.gd")
+
 var save := SaveManager.new()
 var payment: PaymentManager
 var leaderboard: LeaderboardManager
@@ -23,7 +25,10 @@ var audio_move: AudioStreamPlayer
 var audio_bump: AudioStreamPlayer
 var audio_orb: AudioStreamPlayer
 var audio_win: AudioStreamPlayer
+var audio_intro: AudioStreamPlayer
 var intro_tween: Tween
+var intro_tweens: Array[Tween] = []
+var intro_fx: Control
 
 const TEXT := Color("eaf5ff")
 const MUTED := Color("91a8c7")
@@ -89,6 +94,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _build_shell() -> void:
 	var backdrop := Backdrop.new()
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	backdrop.z_index = 0
 	add_child(backdrop)
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -96,8 +102,10 @@ func _build_shell() -> void:
 	margin.add_theme_constant_override("margin_right", 22)
 	margin.add_theme_constant_override("margin_top", 24)
 	margin.add_theme_constant_override("margin_bottom", 22)
+	margin.z_index = 2
 	add_child(margin)
 	screen_root = VBoxContainer.new()
+	screen_root.z_index = 2
 	screen_root.add_theme_constant_override("separation", 14)
 	margin.add_child(screen_root)
 
@@ -118,19 +126,31 @@ func _build_audio() -> void:
 	audio_win.stream = load("res://assets/audio/win.wav")
 	audio_win.volume_db = -5
 	add_child(audio_win)
+	audio_intro = AudioStreamPlayer.new()
+	audio_intro.stream = load("res://assets/audio/illu_intro.wav")
+	audio_intro.volume_db = -8
+	add_child(audio_intro)
 
 func show_studio_intro() -> void:
 	current_screen = "intro"
 	game_active = false
 	_clear_screen()
+	_kill_intro_tweens()
+	_cleanup_intro_fx()
+
+	intro_fx = StudioIntroFXScript.new()
+	intro_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	intro_fx.z_index = 1
+	add_child(intro_fx)
+
 	var top_fill := Control.new()
 	top_fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	screen_root.add_child(top_fill)
 
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_theme_stylebox_override("panel", _panel(Color("0c142b"), Color(CYAN, 0.44), 30))
-	panel.custom_minimum_size = Vector2(0, 360)
+	panel.add_theme_stylebox_override("panel", _panel(Color(0.035, 0.055, 0.13, 0.82), Color(CYAN, 0.46), 32))
+	panel.custom_minimum_size = Vector2(0, 430)
 	panel.modulate = Color(1, 1, 1, 0)
 	screen_root.add_child(panel)
 
@@ -138,66 +158,178 @@ func show_studio_intro() -> void:
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_theme_constant_override("margin_left", 28)
 	margin.add_theme_constant_override("margin_right", 28)
-	margin.add_theme_constant_override("margin_top", 32)
-	margin.add_theme_constant_override("margin_bottom", 32)
+	margin.add_theme_constant_override("margin_top", 28)
+	margin.add_theme_constant_override("margin_bottom", 28)
 	panel.add_child(margin)
 
-	var brand := VBoxContainer.new()
-	brand.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	brand.alignment = BoxContainer.ALIGNMENT_CENTER
-	brand.add_theme_constant_override("separation", 4)
-	margin.add_child(brand)
+	var stage := Control.new()
+	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stage.custom_minimum_size = Vector2(0, 360)
+	margin.add_child(stage)
 
-	var symbol := _label("✦", 58, GOLD)
+	var studio_center := CenterContainer.new()
+	studio_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	studio_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	stage.add_child(studio_center)
+	var studio_brand := VBoxContainer.new()
+	studio_brand.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	studio_brand.alignment = BoxContainer.ALIGNMENT_CENTER
+	studio_brand.add_theme_constant_override("separation", 5)
+	studio_center.modulate = Color(1, 1, 1, 0)
+	studio_center.position.y = 18.0
+	studio_center.add_child(studio_brand)
+
+	var symbol := _label("✦", 62, GOLD)
 	symbol.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	brand.add_child(symbol)
-	var illu := _label("ILLU", 72, TEXT)
+	symbol.modulate = Color(1, 1, 1, 0)
+	symbol.rotation = -0.16
+	studio_brand.add_child(symbol)
+	var illu := _label("ILLU", 78, TEXT)
 	illu.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	illu.add_theme_color_override("font_shadow_color", Color(CYAN, 0.55))
+	illu.add_theme_color_override("font_shadow_color", Color(CYAN, 0.62))
 	illu.add_theme_constant_override("shadow_offset_x", 4)
 	illu.add_theme_constant_override("shadow_offset_y", 4)
-	brand.add_child(illu)
+	illu.modulate = Color(1, 1, 1, 0)
+	studio_brand.add_child(illu)
 	var entertainment := _label("E N T E R T A I N M E N T", 20, CYAN)
 	entertainment.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	brand.add_child(entertainment)
-	var divider := HSeparator.new()
-	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	divider.custom_minimum_size = Vector2(0, 20)
-	brand.add_child(divider)
-	var presents := _label("PRESENTA", 14, MUTED)
+	entertainment.modulate = Color(1, 1, 1, 0)
+	studio_brand.add_child(entertainment)
+	var studio_tagline := _label(Localization.text("JUEGOS · LIGHTNING · ARCADE"), 13, Color(MUTED, 0.88))
+	studio_tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	studio_tagline.modulate = Color(1, 1, 1, 0)
+	studio_brand.add_child(studio_tagline)
+
+	var game_center := CenterContainer.new()
+	game_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	game_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	game_center.modulate = Color(1, 1, 1, 0)
+	game_center.position.y = 18.0
+	stage.add_child(game_center)
+	var game_brand := VBoxContainer.new()
+	game_brand.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	game_brand.alignment = BoxContainer.ALIGNMENT_CENTER
+	game_brand.add_theme_constant_override("separation", 7)
+	game_center.add_child(game_brand)
+	var presents := _label("ILLU ENTERTAINMENT · " + Localization.text("PRESENTA"), 13, Color(MUTED, 0.90))
 	presents.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	brand.add_child(presents)
+	game_brand.add_child(presents)
+	var maze_title := _label("SATOSHI\nMAZE", 58, TEXT)
+	maze_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	maze_title.add_theme_color_override("font_shadow_color", Color(PINK, 0.42))
+	maze_title.add_theme_constant_override("shadow_offset_x", 4)
+	maze_title.add_theme_constant_override("shadow_offset_y", 4)
+	game_brand.add_child(maze_title)
+	var game_tagline := _label(Localization.text("ENTRÁ AL LABERINTO"), 15, GOLD)
+	game_tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	game_brand.add_child(game_tagline)
 
 	var bottom_fill := Control.new()
 	bottom_fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	screen_root.add_child(bottom_fill)
-	var hint := _label("TOCÁ PARA CONTINUAR", 12, Color(MUTED, 0.72))
+	var hint := _label(Localization.text("TOCÁ PARA CONTINUAR"), 12, Color(MUTED, 0.76))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.modulate = Color(1, 1, 1, 0)
 	screen_root.add_child(hint)
 
+	_play(audio_intro)
+
+	# Background reveal and energy flash.
+	var fx_tween := create_tween()
+	intro_tweens.append(fx_tween)
+	fx_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	fx_tween.tween_property(intro_fx, "reveal", 1.0, 1.15)
+	fx_tween.tween_interval(0.38)
+	fx_tween.tween_property(intro_fx, "flash", 1.0, 0.10)
+	fx_tween.set_ease(Tween.EASE_IN_OUT)
+	fx_tween.tween_property(intro_fx, "flash", 0.0, 0.30)
+	fx_tween.tween_interval(1.20)
+	fx_tween.set_ease(Tween.EASE_IN)
+	fx_tween.tween_property(intro_fx, "exit_amount", 1.0, 0.48)
+
+	# Frame / glass panel entrance.
+	var panel_tween := create_tween()
+	intro_tweens.append(panel_tween)
+	panel_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	panel_tween.tween_property(panel, "modulate", Color.WHITE, 0.34)
+
+	# Studio identity arrives in layers rather than as one flat fade.
+	var studio_tween := create_tween()
+	intro_tweens.append(studio_tween)
+	studio_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	studio_tween.tween_interval(0.12)
+	studio_tween.tween_property(studio_center, "modulate", Color.WHITE, 0.24)
+	studio_tween.parallel().tween_property(studio_center, "position", Vector2(0.0, 0.0), 0.40)
+	studio_tween.tween_property(symbol, "modulate", Color.WHITE, 0.18)
+	studio_tween.parallel().tween_property(symbol, "rotation", 0.0, 0.40)
+	studio_tween.tween_property(illu, "modulate", Color.WHITE, 0.30)
+	studio_tween.tween_property(entertainment, "modulate", Color.WHITE, 0.25)
+	studio_tween.tween_property(studio_tagline, "modulate", Color.WHITE, 0.23)
+	studio_tween.tween_interval(0.36)
+	studio_tween.set_ease(Tween.EASE_IN)
+	studio_tween.tween_property(studio_center, "modulate", Color(1, 1, 1, 0), 0.24)
+	studio_tween.parallel().tween_property(studio_center, "position", Vector2(0.0, -14.0), 0.24)
+
+	# Satoshi Maze follows immediately after the ILLU flash.
+	var game_tween := create_tween()
+	intro_tweens.append(game_tween)
+	game_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	game_tween.tween_interval(2.02)
+	game_tween.tween_property(game_center, "modulate", Color.WHITE, 0.30)
+	game_tween.parallel().tween_property(game_center, "position", Vector2(0.0, 0.0), 0.40)
+	game_tween.tween_interval(0.65)
+	game_tween.set_ease(Tween.EASE_IN)
+	game_tween.tween_property(game_center, "modulate", Color(1, 1, 1, 0), 0.34)
+
+	# Skip hint breathes gently instead of blinking.
+	var hint_tween := create_tween()
+	intro_tweens.append(hint_tween)
+	hint_tween.set_loops()
+	hint_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	hint_tween.tween_property(hint, "modulate", Color(1, 1, 1, 0.90), 0.65)
+	hint_tween.tween_property(hint, "modulate", Color(1, 1, 1, 0.42), 0.65)
+
 	intro_tween = create_tween()
-	intro_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	intro_tween.tween_property(panel, "modulate", Color.WHITE, 0.65)
-	intro_tween.tween_interval(1.45)
-	intro_tween.set_ease(Tween.EASE_IN)
-	intro_tween.tween_property(panel, "modulate", Color(1, 1, 1, 0), 0.5)
+	intro_tween.tween_interval(3.30)
+	intro_tween.tween_property(panel, "modulate", Color(1, 1, 1, 0), 0.32)
 	intro_tween.tween_callback(Callable(self, "_intro_complete"))
 
 func _intro_complete() -> void:
 	if current_screen != "intro":
 		return
+	# The timeline that invoked this callback is already completing; do not kill it from inside itself.
 	intro_tween = null
-	show_menu()
+	_kill_intro_tweens()
+	_cleanup_intro_fx()
+	if audio_intro != null:
+		audio_intro.stop()
+	show_menu(true)
 
 func _finish_intro() -> void:
 	if current_screen != "intro":
 		return
-	if intro_tween != null:
-		intro_tween.kill()
-		intro_tween = null
-	show_menu()
+	_kill_intro_tweens()
+	_cleanup_intro_fx()
+	if audio_intro != null:
+		audio_intro.stop()
+	show_menu(true)
 
-func show_menu() -> void:
+func _kill_intro_tweens() -> void:
+	for tween in intro_tweens:
+		if tween != null and tween.is_valid():
+			tween.kill()
+	intro_tweens.clear()
+	if intro_tween != null and intro_tween.is_valid():
+		intro_tween.kill()
+	intro_tween = null
+
+func _cleanup_intro_fx() -> void:
+	if intro_fx != null and is_instance_valid(intro_fx):
+		intro_fx.visible = false
+		intro_fx.queue_free()
+	intro_fx = null
+
+func show_menu(animate_entry: bool = false) -> void:
 	current_screen = "menu"
 	game_active = false
 	_clear_screen()
@@ -236,6 +368,21 @@ func show_menu() -> void:
 	var studio := _label("ILLU ENTERTAINMENT", 12, Color(MUTED, 0.70))
 	studio.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	screen_root.add_child(studio)
+
+	if animate_entry:
+		_animate_menu_entry(badge, title, subtitle, summary)
+
+func _animate_menu_entry(badge: Label, title: Label, subtitle: Label, summary: Label) -> void:
+	var nodes: Array[Control] = [badge, title, subtitle, summary]
+	for node in nodes:
+		node.modulate = Color(1, 1, 1, 0)
+	var delay: float = 0.0
+	for node in nodes:
+		var tween := create_tween()
+		tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_interval(delay)
+		tween.tween_property(node, "modulate", Color.WHITE, 0.30)
+		delay += 0.075
 
 func show_levels() -> void:
 	current_screen = "levels"
