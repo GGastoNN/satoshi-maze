@@ -2,10 +2,29 @@ extends RefCounted
 class_name AppConfig
 
 const GAME_NAME := "Satoshi Maze"
-const VERSION := "5.4.0"
+const VERSION := "5.5.0"
 const TOTAL_LEVELS := 100
-const FREE_LEVELS := 3
-const LEVEL_PRICE_SATS := 2
+
+# Solo los Boss Maze de campaña requieren pago. El resto de niveles es gratuito,
+# pero el avance es estrictamente secuencial.
+const BOSS_PRICES_SATS := {
+	10: 10,
+	20: 12,
+	30: 14,
+	40: 16,
+	50: 18,
+	60: 20,
+	70: 22,
+	80: 24,
+	90: 28,
+	100: 30,
+}
+
+static func is_boss_level(level: int) -> bool:
+	return level >= 10 and level <= TOTAL_LEVELS and level % 10 == 0
+
+static func boss_price_sats(level: int) -> int:
+	return int(BOSS_PRICES_SATS.get(level, 0))
 
 # Pago directo LNURL-pay. La dirección Lightning no se muestra en la UI.
 # No hay API keys, secrets, webhook ni backend de pagos dentro del APK.

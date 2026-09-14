@@ -363,12 +363,17 @@ func show_levels() -> void:
 	game_active = false
 	_clear_screen()
 	_add_topbar("CAMPAÑA", func(): show_menu())
-	var info := _label("Cada 10 niveles aparece un Boss Maze. Encontrarás niebla, llaves, portales y hielo.", 15, MUTED)
+	var info := _label("Los niveles normales son gratis. Solo los Boss Maze requieren pago y la campaña debe completarse estrictamente en orden.", 15, MUTED)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	screen_root.add_child(info)
-	if not save.has_product("full_pass"):
-		screen_root.add_child(_button("∞ MAZE PASS · DESBLOQUEAR LOS 100 · 149 SATS", func(): show_purchase_product("full_pass"), false, GOLD))
+
+	var progress: int = save.completed_campaign_prefix()
+	var progress_copy: String = "%s · %d / %d" % [Localization.text("PROGRESO SECUENCIAL"), progress, AppConfig.TOTAL_LEVELS]
+	var progress_text := _label(progress_copy, 14, CYAN)
+	progress_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	screen_root.add_child(progress_text)
+
 	var scroll := TouchScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	screen_root.add_child(scroll)
@@ -378,17 +383,34 @@ func show_levels() -> void:
 	grid.add_theme_constant_override("v_separation", 9)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(grid)
+
+	var next_level: int = save.next_campaign_level()
 	for lvl in range(1, AppConfig.TOTAL_LEVELS + 1):
-		var unlocked := save.is_unlocked(lvl)
-		var stars := save.get_level_stars(lvl)
-		var marker := "★".repeat(stars) + "☆".repeat(3 - stars) if stars > 0 else Localization.text("SIN MARCA")
-		var bottom := marker if unlocked else "⚡ %d SATS" % AppConfig.LEVEL_PRICE_SATS
-		var prefix := "BOSS " if lvl % 10 == 0 else ""
-		var label := "%s%02d\n%s" % [prefix, lvl, bottom]
-		var accent := PINK if lvl % 10 == 0 else (CYAN if unlocked else GOLD)
-		var b := _button(label, Callable(self, "_select_level").bind(lvl), false, accent)
+		var boss: bool = AppConfig.is_boss_level(lvl)
+		var completed_in_sequence: bool = lvl <= progress
+		var playable: bool = save.can_play_level(lvl)
+		var is_next: bool = lvl == next_level and lvl <= AppConfig.TOTAL_LEVELS
+		var boss_needs_payment: bool = is_next and boss and not save.has_boss_access(lvl)
+		var stars: int = save.get_level_stars(lvl)
+		var marker: String = "★".repeat(stars) + "☆".repeat(3 - stars) if stars > 0 else Localization.text("COMPLETADO")
+		var bottom: String = ""
+		if completed_in_sequence:
+			bottom = marker
+		elif boss_needs_payment:
+			bottom = "⚡ %d SATS" % AppConfig.boss_price_sats(lvl)
+		elif is_next and playable:
+			bottom = "▶ " + Localization.text("DISPONIBLE")
+		else:
+			bottom = "🔒 " + Localization.text("EN SECUENCIA")
+		var prefix: String = "BOSS " if boss else ""
+		var label: String = "%s%02d\n%s" % [prefix, lvl, bottom]
+		var accent: Color = PINK if boss else (CYAN if playable or completed_in_sequence else MUTED)
+		var b: Button = _button(label, Callable(self, "_select_level").bind(lvl), false, accent)
 		b.custom_minimum_size = Vector2(150, 88)
 		b.add_theme_font_size_override("font_size", 13)
+		# Future levels cannot be activated. The current unpaid Boss remains clickable
+		# only so it can open its Lightning purchase screen.
+		b.disabled = not (playable or boss_needs_payment)
 		grid.add_child(b)
 
 func show_daily() -> void:
@@ -430,12 +452,21 @@ func start_infinite(round_number: int) -> void:
 	_start_maze(maze, AppConfig.INFINITE_START_LEVEL + round_number, run_key, "infinite", Localization.f("infinite_run", [round_number]))
 
 func _select_level(level: int) -> void:
-	if save.is_unlocked(level):
+	if save.can_play_level(level):
 		start_level(level)
-	else:
+		return
+	# Only the immediate next Boss may open a payment gate.
+	if save.is_next_campaign_level(level) and AppConfig.is_boss_level(level) and not save.has_boss_access(level):
 		show_purchase_product("level_%d" % level)
 
 func start_level(level: int) -> void:
+	# Defense in depth: even direct calls cannot bypass sequential campaign rules.
+	if not save.can_play_level(level):
+		if save.is_next_campaign_level(level) and AppConfig.is_boss_level(level) and not save.has_boss_access(level):
+			show_purchase_product("level_%d" % level)
+		else:
+			show_levels()
+		return
 	_start_maze(MazeGenerator.generate(level), level, str(level), "campaign", Localization.f("maze_number", [level]))
 
 func _start_maze(maze: Dictionary, level_for_palette: int, run_key: String, mode: String, title_text: String) -> void:
@@ -585,7 +616,7 @@ func _store_filter_title(filter_id: String) -> String:
 
 func _store_section_for_kind(kind: String) -> String:
 	match kind:
-		"pass", "feature": return "featured"
+		"feature": return "featured"
 		"bundle": return "bundles"
 		"skin": return "skins"
 		"trail": return "trails"
@@ -609,8 +640,6 @@ func _store_section_title(section: String) -> String:
 func _is_store_product_owned(product: Dictionary) -> bool:
 	var product_id := str(product.get("id", ""))
 	var kind := str(product.get("kind", ""))
-	if kind == "pass":
-		return save.has_product("full_pass")
 	if kind == "bundle":
 		if save.has_product(product_id):
 			return true
@@ -732,7 +761,8 @@ func show_help() -> void:
 		["GHOST RUN", "Tu mejor recorrido queda como un fantasma visual para competir contra vos mismo."],
 		["DAILY & WEEKLY", "Desafíos de semilla global para comparar tiempos y movimientos en rankings."],
 		["INFINITE", "Encadená laberintos cada vez más exigentes y buscá tu mejor racha."],
-		["LIGHTNING STORE", "Los pagos compran desbloqueos y cosméticos permanentes. No venden soluciones ni ventajas competitivas."],
+		["CAMPAÑA SECUENCIAL", "Los niveles normales son gratis. Debés completar cada nivel en orden; solo los Boss Maze requieren pago."],
+		["LIGHTNING STORE", "Los pagos compran acceso a Boss Maze y cosméticos permanentes. No venden soluciones ni ventajas competitivas."],
 	]:
 		list.add_child(_card(item[0], item[1], CYAN))
 
@@ -860,7 +890,7 @@ func show_purchase_success(product: Dictionary) -> void:
 	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; screen_root.add_child(s)
 	if str(product.get("kind", "")) == "level":
 		var unlocked_level := int(product.get("level", 1))
-		screen_root.add_child(_button("JUGAR AHORA", Callable(self, "start_level").bind(unlocked_level), true, CYAN))
+		screen_root.add_child(_button("JUGAR AHORA", Callable(self, "_select_level").bind(unlocked_level), true, CYAN))
 	else:
 		screen_root.add_child(_button("VER COLECCIÓN", func(): show_collection(), true, CYAN))
 		screen_root.add_child(_button("VOLVER A LA TIENDA", func(): show_store(), false, TEXT))
@@ -932,8 +962,9 @@ func show_result(moves: int, elapsed: float, orbs: int, stars: int, shortest: in
 	_spacer(12)
 	if current_mode == "campaign" and current_level < AppConfig.TOTAL_LEVELS:
 		var next := current_level + 1
-		var next_text := Localization.text("SIGUIENTE NIVEL") if save.is_unlocked(next) else Localization.f("next_sats", [AppConfig.LEVEL_PRICE_SATS])
-		screen_root.add_child(_button(next_text, func(): _select_level(next), true, CYAN if save.is_unlocked(next) else GOLD))
+		var next_is_paid_boss: bool = AppConfig.is_boss_level(next) and not save.has_boss_access(next)
+		var next_text: String = ("BOSS · %d SATS" % AppConfig.boss_price_sats(next)) if next_is_paid_boss else Localization.text("SIGUIENTE NIVEL")
+		screen_root.add_child(_button(next_text, func(): _select_level(next), true, GOLD if next_is_paid_boss else CYAN))
 	elif current_mode == "infinite":
 		screen_root.add_child(_button("CONTINUAR · RUN %02d" % (infinite_round + 1), func(): start_infinite(infinite_round + 1), true, PINK))
 	elif current_mode in ["daily", "weekly"]:

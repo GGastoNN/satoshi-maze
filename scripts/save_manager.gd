@@ -2,6 +2,7 @@ extends RefCounted
 class_name SaveManager
 
 var purchased_levels: Dictionary = {}
+var campaign_completed: Dictionary = {}
 var owned_products: Dictionary = {}
 var equipped: Dictionary = ProductCatalog.default_cosmetics()
 var best_moves: Dictionary = {}
@@ -43,12 +44,14 @@ func load_data() -> void:
 		return
 	var data: Dictionary = parsed
 	_apply_data(data)
+	_migrate_campaign_completion()
 	_ensure_install_id()
 	if source_path != AppConfig.SAVE_PATH:
 		save_data()
 
 func _apply_data(data: Dictionary) -> void:
 	purchased_levels = data.get("purchased_levels", data.get("purchased", {}))
+	campaign_completed = data.get("campaign_completed", {})
 	owned_products = data.get("owned_products", {})
 	equipped = data.get("equipped", ProductCatalog.default_cosmetics())
 	best_moves = data.get("best_moves", {})
@@ -91,7 +94,16 @@ func _migrate_legacy() -> void:
 	best_moves = old.get("best_moves", {})
 	best_times = old.get("best_times", {})
 	total_stars = int(old.get("total_stars", 0))
+	_migrate_campaign_completion()
 	save_data()
+
+func _migrate_campaign_completion() -> void:
+	# V5.5 introduces explicit sequential campaign progress. Existing campaign
+	# completions are reconstructed from saved stars without deleting old scores.
+	for key in best_stars.keys():
+		var skey := str(key)
+		if skey.is_valid_int() and int(best_stars[key]) > 0:
+			campaign_completed[skey] = true
 
 func _ensure_install_id() -> void:
 	if not install_id.is_empty():
@@ -107,6 +119,7 @@ func save_data() -> void:
 	file.store_string(JSON.stringify({
 		"version": AppConfig.VERSION,
 		"purchased_levels": purchased_levels,
+		"campaign_completed": campaign_completed,
 		"owned_products": owned_products,
 		"equipped": equipped,
 		"best_moves": best_moves,
@@ -130,16 +143,56 @@ func save_data() -> void:
 		"haptics_enabled": haptics_enabled,
 	}))
 
+func is_level_completed(level: int) -> bool:
+	return bool(campaign_completed.get(str(level), false))
+
+func completed_campaign_prefix() -> int:
+	var completed := 0
+	for level in range(1, AppConfig.TOTAL_LEVELS + 1):
+		if not is_level_completed(level):
+			break
+		completed = level
+	return completed
+
+func next_campaign_level() -> int:
+	return mini(completed_campaign_prefix() + 1, AppConfig.TOTAL_LEVELS + 1)
+
+func is_next_campaign_level(level: int) -> bool:
+	return level == next_campaign_level() and level <= AppConfig.TOTAL_LEVELS
+
+func has_boss_access(level: int) -> bool:
+	if not AppConfig.is_boss_level(level):
+		return true
+	# Honor old Maze Pass purchases, but never let them bypass sequential progress.
+	return has_product("full_pass") or bool(purchased_levels.get(str(level), false))
+
+func can_play_level(level: int) -> bool:
+	if level < 1 or level > AppConfig.TOTAL_LEVELS:
+		return false
+	var prefix := completed_campaign_prefix()
+	# Completed contiguous levels remain replayable.
+	if level <= prefix:
+		return true
+	# The only new playable level is the immediate next one.
+	if level != prefix + 1:
+		return false
+	# Normal levels are free. Bosses additionally require their purchase entitlement.
+	return has_boss_access(level)
+
 func is_unlocked(level: int) -> bool:
-	return level <= AppConfig.FREE_LEVELS or has_product("full_pass") or bool(purchased_levels.get(str(level), false))
+	# Compatibility alias used by older UI code.
+	return can_play_level(level)
 
 func unlock_level(level: int) -> void:
-	if level > AppConfig.FREE_LEVELS:
+	# V5.5 sells only Boss Maze gates.
+	if AppConfig.is_boss_level(level):
 		purchased_levels[str(level)] = true
 		save_data()
 
 func unlock_all_levels() -> void:
-	for level in range(AppConfig.FREE_LEVELS + 1, AppConfig.TOTAL_LEVELS + 1):
+	# Legacy Maze Pass entitlement: mark every boss as paid, but progression
+	# remains sequential through can_play_level().
+	for level in range(10, AppConfig.TOTAL_LEVELS + 1, 10):
 		purchased_levels[str(level)] = true
 	save_data()
 
@@ -151,7 +204,7 @@ func owns_product_id(product_id: String) -> bool:
 	if product.is_empty():
 		return false
 	if str(product.get("kind", "")) == "level":
-		return is_unlocked(int(product.get("level", 0)))
+		return has_boss_access(int(product.get("level", 0)))
 	return has_product(product_id)
 
 func grant_product(product_id: String, payment_id := "", amount_sats := 0) -> void:
@@ -221,6 +274,8 @@ func record_result(level_key: String, moves: int, seconds: float, stars: int, sh
 			total_stars += stars - old_stars
 	if improved or not ghost_runs.has(level_key):
 		ghost_runs[level_key] = {"path": _serialize_path(path), "total_time": seconds, "moves": moves}
+	if count_stars and level_key.is_valid_int():
+		campaign_completed[level_key] = true
 	total_moves += moves
 	total_seconds += seconds
 	total_orbs += orbs

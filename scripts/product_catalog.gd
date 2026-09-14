@@ -2,10 +2,6 @@ extends RefCounted
 class_name ProductCatalog
 
 const PRODUCTS := {
-	"full_pass": {
-		"name": "MAZE PASS · 100", "kind": "pass", "price_sats": 149, "icon": "∞",
-		"description": "Desbloquea permanentemente todos los laberintos premium del 4 al 100.", "accent": "ffd166",
-	},
 	"pro_stats": {
 		"name": "PRO STATS", "kind": "feature", "price_sats": 29, "icon": "⌁",
 		"description": "Panel avanzado: eficiencia global, récords, actividad y comparativas.", "accent": "58e7ff",
@@ -219,11 +215,16 @@ const NEW_PRODUCT_TEXT := {
 static func get_product(product_id: String) -> Dictionary:
 	if product_id.begins_with("level_"):
 		var level := int(product_id.trim_prefix("level_"))
-		if level >= 4 and level <= AppConfig.TOTAL_LEVELS:
+		if AppConfig.is_boss_level(level):
 			return {
-				"id": product_id, "name": Localization.f("maze_number", [level]), "kind": "level", "level": level,
-				"price_sats": AppConfig.LEVEL_PRICE_SATS, "icon": "◇",
-				"description": Localization.text("Desbloqueo permanente de este laberinto en tu colección."), "accent": "ffd166",
+				"id": product_id,
+				"name": "BOSS · " + Localization.f("maze_number", [level]),
+				"kind": "level",
+				"level": level,
+				"price_sats": AppConfig.boss_price_sats(level),
+				"icon": "⚡",
+				"description": Localization.text("Acceso permanente a este Boss Maze. Debés llegar completando la campaña en orden."),
+				"accent": "ff5fce",
 			}
 	if not PRODUCTS.has(product_id) and not REWARD_PRODUCTS.has(product_id):
 		return {}
@@ -251,7 +252,7 @@ static func _product_text(source: String) -> String:
 static func list_store_products() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var featured: Array[String] = [
-		"full_pass", "pro_stats", "bundle_neon", "bundle_bitcoin", "bundle_void",
+		"pro_stats", "bundle_neon", "bundle_bitcoin", "bundle_void",
 		"skin_btc_gold", "skin_plasma", "skin_emerald", "skin_void", "skin_ruby", "skin_ice", "skin_solar", "skin_quantum",
 		"trail_comet", "trail_lightning", "trail_pixels", "trail_neon", "trail_firefly", "trail_orbit", "trail_glitch",
 		"theme_sunset", "theme_mono", "theme_matrix", "theme_arctic", "theme_lava", "theme_ocean", "theme_synthwave",
