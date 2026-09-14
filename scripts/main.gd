@@ -76,18 +76,10 @@ func _process(_delta: float) -> void:
 func _on_system_back_requested() -> void:
 	_back()
 
-func _input(event: InputEvent) -> void:
-	if current_screen != "intro":
-		return
-	var skip_intro := false
-	if event is InputEventScreenTouch and event.pressed:
-		skip_intro = true
-	elif event is InputEventMouseButton and event.pressed:
-		skip_intro = true
-	elif event is InputEventKey and event.pressed:
-		skip_intro = true
-	if skip_intro:
-		_finish_intro()
+func _input(_event: InputEvent) -> void:
+	# The studio/game presentation is mandatory. Consume every regular input while it plays
+	# so touch, mouse and keyboard cannot shorten or bypass the sequence.
+	if current_screen == "intro":
 		get_viewport().set_input_as_handled()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -230,10 +222,6 @@ func show_studio_intro() -> void:
 	var bottom_fill := Control.new()
 	bottom_fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	screen_root.add_child(bottom_fill)
-	var hint := _label(Localization.text("TOCÁ PARA CONTINUAR"), 12, Color(MUTED, 0.76))
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.modulate = Color(1, 1, 1, 0)
-	screen_root.add_child(hint)
 
 	_play(audio_intro)
 
@@ -284,14 +272,6 @@ func show_studio_intro() -> void:
 	game_tween.set_ease(Tween.EASE_IN)
 	game_tween.tween_property(game_center, "modulate", Color(1, 1, 1, 0), 0.34)
 
-	# Skip hint breathes gently instead of blinking.
-	var hint_tween := create_tween()
-	intro_tweens.append(hint_tween)
-	hint_tween.set_loops()
-	hint_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	hint_tween.tween_property(hint, "modulate", Color(1, 1, 1, 0.90), 0.65)
-	hint_tween.tween_property(hint, "modulate", Color(1, 1, 1, 0.42), 0.65)
-
 	intro_tween = create_tween()
 	intro_tween.tween_interval(3.30)
 	intro_tween.tween_property(panel, "modulate", Color(1, 1, 1, 0), 0.32)
@@ -302,15 +282,6 @@ func _intro_complete() -> void:
 		return
 	# The timeline that invoked this callback is already completing; do not kill it from inside itself.
 	intro_tween = null
-	_kill_intro_tweens()
-	_cleanup_intro_fx()
-	if audio_intro != null:
-		audio_intro.stop()
-	show_menu(true)
-
-func _finish_intro() -> void:
-	if current_screen != "intro":
-		return
 	_kill_intro_tweens()
 	_cleanup_intro_fx()
 	if audio_intro != null:
@@ -1002,7 +973,7 @@ func _back() -> void:
 		return
 	match current_screen:
 		"game": _leave_game()
-		"intro": _finish_intro()
+		"intro": return # Mandatory presentation: Back is ignored until it finishes.
 		"levels", "daily", "store", "collection", "stats", "help", "settings": show_menu()
 		"privacy", "terms": show_settings()
 		"purchase": _purchase_back()
