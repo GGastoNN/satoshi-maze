@@ -15,6 +15,10 @@ La V3 usa LNURL-pay directamente desde el APK. No requiere backend de pagos, API
 
 Si el receptor no devuelve `verify`, el cobro se cancela antes de abrir la wallet. No existe botón manual de “ya pagué”.
 
+## Economía de campaña V5.5
+
+Los niveles normales de campaña son gratuitos. Solo los Boss Maze 10, 20, 30, 40, 50, 60, 70, 80, 90 y 100 generan productos de nivel pagables. Sus precios son 10, 12, 14, 16, 18, 20, 22, 24, 28 y 30 sats respectivamente. La compra acredita el Boss, pero el acceso sigue sujeto al progreso secuencial de la campaña.
+
 ## Límites de este modo
 
 - Las compras se conservan localmente en el sandbox de la aplicación.

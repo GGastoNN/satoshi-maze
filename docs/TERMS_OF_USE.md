@@ -13,7 +13,7 @@ ILLU ENTERTAINMENT te concede una licencia personal, limitada, revocable, no exc
 El progreso, niveles, skins, trails, temas, efectos y demás elementos son contenido digital del juego. No representan dinero, depósitos, inversiones ni activos financieros, no generan rendimientos y no tienen valor de retiro dentro de Satoshi Maze.
 
 ## 4. Compras con Lightning
-Los precios se muestran en satoshis antes de pagar. Una compra se acredita únicamente cuando el juego verifica automáticamente el invoice. Tu wallet o la red pueden aplicar condiciones o costos propios. No envíes sats si la aplicación indica que no puede verificar el pago.
+Los niveles normales de campaña son gratuitos. Solo los Boss Maze requieren pago para avanzar, y comprar un Boss no permite saltar niveles anteriores. Los precios se muestran en satoshis antes de pagar. Una compra se acredita únicamente cuando el juego verifica automáticamente el invoice. Tu wallet o la red pueden aplicar condiciones o costos propios. No envíes sats si la aplicación indica que no puede verificar el pago.
 
 ## 5. Persistencia y restauración
 Los desbloqueos de esta versión se registran localmente en el dispositivo. Si borrás los datos, desinstalás la aplicación o cambiás de teléfono, puede no ser posible restaurarlos automáticamente. Conservá esta limitación en cuenta antes de comprar.
