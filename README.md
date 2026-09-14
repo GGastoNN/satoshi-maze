@@ -1,6 +1,16 @@
-# Satoshi Maze V5.2
+# Satoshi Maze V5.5
 
 Juego de laberintos para Android hecho con Godot 4.7.x, desarrollado por **ILLU ENTERTAINMENT**, con 100 niveles, desafíos Daily/Weekly, Infinite Run, Ghost Run, estrellas, modificadores, cosméticos y tienda Lightning.
+
+## Novedades V5.5
+
+- La campaña ahora es **100 % secuencial**: no se puede saltar ningún nivel.
+- Los niveles normales son gratuitos; solo se pagan los **Boss Maze** de los niveles 10, 20, 30…100.
+- Precios Boss progresivos: **10, 12, 14, 16, 18, 20, 22, 24, 28 y 30 sats** (194 sats en total).
+- Los niveles completados se pueden rejugar, pero los futuros permanecen bloqueados hasta completar el anterior.
+- Las compras antiguas de Boss y el antiguo Maze Pass se respetan, aunque ya no permiten saltarse la secuencia.
+- El Maze Pass dejó de ofrecerse como producto nuevo.
+- Se conserva la intro obligatoria V5.4, la navegación Back V5.3 y el feedback de paredes V5.1.
 
 ## Novedades V5.2
 
@@ -8,7 +18,7 @@ Juego de laberintos para Android hecho con Godot 4.7.x, desarrollado por **ILLU 
 - Fondo procedural con partículas, halos, anillos y trazos de laberinto animados.
 - Reveal por capas, destello de transición y entrada escalonada al menú principal.
 - Nuevo stinger corto de estudio, sin bloquear el acceso al juego.
-- La intro puede saltarse inmediatamente con toque, clic o tecla.
+- La intro cinematográfica se mantiene como presentación obligatoria desde V5.4.
 - Taglines de la presentación localizados en los seis idiomas disponibles.
 
 ## Novedades V5.1
@@ -32,7 +42,7 @@ Juego de laberintos para Android hecho con Godot 4.7.x, desarrollado por **ILLU 
 
 Pago directo por LNURL-pay, sin backend de pagos, API keys ni webhook. La acreditación exige el endpoint LNURL `verify`; si no existe verificación segura, el juego cancela antes de abrir la wallet.
 
-Los tres primeros niveles son gratuitos. Los niveles premium y la tienda ofrecen desbloqueos permanentes y cosméticos, sin ventajas pay-to-win. Las compras se guardan localmente en el dispositivo.
+Los niveles normales de campaña son gratuitos y solo los Boss Maze requieren pago. El avance es estrictamente secuencial: comprar un Boss no permite saltar niveles. La tienda de cosméticos permanece separada y no ofrece ventajas pay-to-win. Las compras se guardan localmente en el dispositivo.
 
 Más detalles: `docs/PAYMENT_DIRECT.md`.
 
