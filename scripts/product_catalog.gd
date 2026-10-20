@@ -3,136 +3,136 @@ class_name ProductCatalog
 
 const PRODUCTS := {
 	"pro_stats": {
-		"name": "PRO STATS", "kind": "feature", "price_sats": 29, "icon": "⌁",
+		"name": "PRO STATS", "kind": "feature", "price_sats": 0, "icon": "⌁",
 		"description": "Panel avanzado: eficiencia global, récords, actividad y comparativas.", "accent": "58e7ff",
 	},
 
 	# Packs: una sola compra, varios cosméticos permanentes.
 	"bundle_neon": {
-		"name": "NEON STARTER PACK", "kind": "bundle", "price_sats": 39, "icon": "✧",
+		"name": "NEON STARTER PACK", "kind": "bundle", "price_sats": 0, "icon": "✧",
 		"description": "Plasma Core + Comet Trail + Sunset Grid. Un set completo con precio especial.", "accent": "ff5fce",
 		"items": ["skin_plasma", "trail_comet", "theme_sunset"],
 	},
 	"bundle_bitcoin": {
-		"name": "BITCOIN SIGNATURE", "kind": "bundle", "price_sats": 49, "icon": "₿",
+		"name": "BITCOIN SIGNATURE", "kind": "bundle", "price_sats": 0, "icon": "₿",
 		"description": "Bitcoin Gold + Lightning Trail + Sats Burst. Identidad Lightning completa.", "accent": "ffbd2e",
 		"items": ["skin_btc_gold", "trail_lightning", "victory_fx_sats"],
 	},
 	"bundle_void": {
-		"name": "VOID PROTOCOL", "kind": "bundle", "price_sats": 55, "icon": "◉",
+		"name": "VOID PROTOCOL", "kind": "bundle", "price_sats": 0, "icon": "◉",
 		"description": "Void + Glitch Trail + Synthwave + Portal Collapse. El set visual más intenso.", "accent": "a78bfa",
 		"items": ["skin_void", "trail_glitch", "theme_synthwave", "victory_fx_portal"],
 	},
 
 	# Skins
 	"skin_btc_gold": {
-		"name": "BITCOIN GOLD", "kind": "skin", "price_sats": 15, "icon": "₿",
+		"name": "BITCOIN GOLD", "kind": "skin", "price_sats": 0, "icon": "₿",
 		"description": "Núcleo dorado con pulso cálido y destello premium.", "accent": "ffbd2e",
 	},
 	"skin_plasma": {
-		"name": "PLASMA CORE", "kind": "skin", "price_sats": 12, "icon": "●",
+		"name": "PLASMA CORE", "kind": "skin", "price_sats": 0, "icon": "●",
 		"description": "Esfera magenta-cyan de alta energía.", "accent": "ff5fce",
 	},
 	"skin_emerald": {
-		"name": "EMERALD", "kind": "skin", "price_sats": 10, "icon": "◆",
+		"name": "EMERALD", "kind": "skin", "price_sats": 0, "icon": "◆",
 		"description": "Cristal verde con brillo limpio y minimalista.", "accent": "4dff9d",
 	},
 	"skin_void": {
-		"name": "VOID", "kind": "skin", "price_sats": 18, "icon": "◉",
+		"name": "VOID", "kind": "skin", "price_sats": 0, "icon": "◉",
 		"description": "Núcleo oscuro con anillo violeta y halo profundo.", "accent": "a78bfa",
 	},
 	"skin_ruby": {
-		"name": "CYBER RUBY", "kind": "skin", "price_sats": 13, "icon": "⬢",
+		"name": "CYBER RUBY", "kind": "skin", "price_sats": 0, "icon": "⬢",
 		"description": "Hexágono rubí con centro brillante y estética cyberpunk.", "accent": "ff466f",
 	},
 	"skin_ice": {
-		"name": "ICE SHARD", "kind": "skin", "price_sats": 14, "icon": "◇",
+		"name": "ICE SHARD", "kind": "skin", "price_sats": 0, "icon": "◇",
 		"description": "Fragmento de hielo azul con reflejo blanco pulsante.", "accent": "9ee7ff",
 	},
 	"skin_solar": {
-		"name": "SOLAR CORE", "kind": "skin", "price_sats": 16, "icon": "☀",
+		"name": "SOLAR CORE", "kind": "skin", "price_sats": 0, "icon": "☀",
 		"description": "Mini estrella naranja con corona solar animada.", "accent": "ffad33",
 	},
 	"skin_quantum": {
-		"name": "QUANTUM", "kind": "skin", "price_sats": 20, "icon": "◎",
+		"name": "QUANTUM", "kind": "skin", "price_sats": 0, "icon": "◎",
 		"description": "Núcleo cuántico con órbitas dobles y resplandor eléctrico.", "accent": "6de7ff",
 	},
 
 	# Trails
 	"trail_comet": {
-		"name": "COMET TRAIL", "kind": "trail", "price_sats": 12, "icon": "☄",
+		"name": "COMET TRAIL", "kind": "trail", "price_sats": 0, "icon": "☄",
 		"description": "Cola de cometa que se desvanece tras cada movimiento.", "accent": "84f7ff",
 	},
 	"trail_lightning": {
-		"name": "LIGHTNING TRAIL", "kind": "trail", "price_sats": 15, "icon": "ϟ",
+		"name": "LIGHTNING TRAIL", "kind": "trail", "price_sats": 0, "icon": "ϟ",
 		"description": "Conecta tu recorrido con descargas eléctricas.", "accent": "ffe66d",
 	},
 	"trail_pixels": {
-		"name": "PIXEL DUST", "kind": "trail", "price_sats": 9, "icon": "⁙",
+		"name": "PIXEL DUST", "kind": "trail", "price_sats": 0, "icon": "⁙",
 		"description": "Partículas retro de baja persistencia.", "accent": "72efdd",
 	},
 	"trail_neon": {
-		"name": "NEON RIBBON", "kind": "trail", "price_sats": 13, "icon": "〰",
+		"name": "NEON RIBBON", "kind": "trail", "price_sats": 0, "icon": "〰",
 		"description": "Cinta luminosa continua que dibuja tu ruta reciente.", "accent": "ff70d9",
 	},
 	"trail_firefly": {
-		"name": "FIREFLY", "kind": "trail", "price_sats": 11, "icon": "✣",
+		"name": "FIREFLY", "kind": "trail", "price_sats": 0, "icon": "✣",
 		"description": "Puntos de luz que titilan detrás de cada movimiento.", "accent": "d8ff73",
 	},
 	"trail_orbit": {
-		"name": "ORBIT TRAIL", "kind": "trail", "price_sats": 17, "icon": "⊙",
+		"name": "ORBIT TRAIL", "kind": "trail", "price_sats": 0, "icon": "⊙",
 		"description": "Microórbitas que giran alrededor de las huellas recientes.", "accent": "9f8cff",
 	},
 	"trail_glitch": {
-		"name": "GLITCH TRAIL", "kind": "trail", "price_sats": 14, "icon": "▥",
+		"name": "GLITCH TRAIL", "kind": "trail", "price_sats": 0, "icon": "▥",
 		"description": "Fragmentos digitales desplazados con apariencia de señal rota.", "accent": "ff5fd7",
 	},
 
 	# Themes
 	"theme_sunset": {
-		"name": "SUNSET GRID", "kind": "theme", "price_sats": 22, "icon": "◫",
+		"name": "SUNSET GRID", "kind": "theme", "price_sats": 0, "icon": "◫",
 		"description": "Naranjas, violetas y luces de arcade nocturno.", "accent": "ff8a5b",
 	},
 	"theme_mono": {
-		"name": "MONOCHROME", "kind": "theme", "price_sats": 18, "icon": "◩",
+		"name": "MONOCHROME", "kind": "theme", "price_sats": 0, "icon": "◩",
 		"description": "Blanco, negro y cyan para un look técnico y limpio.", "accent": "f5f5f5",
 	},
 	"theme_matrix": {
-		"name": "MATRIX", "kind": "theme", "price_sats": 20, "icon": "▦",
+		"name": "MATRIX", "kind": "theme", "price_sats": 0, "icon": "▦",
 		"description": "Negro profundo y verde terminal.", "accent": "52ff9a",
 	},
 	"theme_arctic": {
-		"name": "ARCTIC", "kind": "theme", "price_sats": 19, "icon": "❄",
+		"name": "ARCTIC", "kind": "theme", "price_sats": 0, "icon": "❄",
 		"description": "Azules helados, paredes blancas y reflejos de aurora.", "accent": "8de8ff",
 	},
 	"theme_lava": {
-		"name": "LAVA CORE", "kind": "theme", "price_sats": 21, "icon": "♨",
+		"name": "LAVA CORE", "kind": "theme", "price_sats": 0, "icon": "♨",
 		"description": "Negro volcánico, magma naranja y objetivos incandescentes.", "accent": "ff6b35",
 	},
 	"theme_ocean": {
-		"name": "ABYSS OCEAN", "kind": "theme", "price_sats": 20, "icon": "≋",
+		"name": "ABYSS OCEAN", "kind": "theme", "price_sats": 0, "icon": "≋",
 		"description": "Azul abisal, turquesa y brillo bioluminiscente.", "accent": "4deeea",
 	},
 	"theme_synthwave": {
-		"name": "SYNTHWAVE", "kind": "theme", "price_sats": 23, "icon": "▱",
+		"name": "SYNTHWAVE", "kind": "theme", "price_sats": 0, "icon": "▱",
 		"description": "Fucsia eléctrico, violeta oscuro y cyan retrofuturista.", "accent": "ff4fd8",
 	},
 
 	# Victory effects
 	"victory_fx_supernova": {
-		"name": "SUPERNOVA FINISH", "kind": "victory_fx", "price_sats": 16, "icon": "✦",
+		"name": "SUPERNOVA FINISH", "kind": "victory_fx", "price_sats": 0, "icon": "✦",
 		"description": "Explosión de partículas premium al completar un laberinto.", "accent": "ffd166",
 	},
 	"victory_fx_thunder": {
-		"name": "THUNDER FINISH", "kind": "victory_fx", "price_sats": 15, "icon": "ϟ",
+		"name": "THUNDER FINISH", "kind": "victory_fx", "price_sats": 0, "icon": "ϟ",
 		"description": "Descarga eléctrica de victoria con corona Lightning.", "accent": "ffe66d",
 	},
 	"victory_fx_portal": {
-		"name": "PORTAL COLLAPSE", "kind": "victory_fx", "price_sats": 18, "icon": "◉",
+		"name": "PORTAL COLLAPSE", "kind": "victory_fx", "price_sats": 0, "icon": "◉",
 		"description": "El final se presenta como un colapso dimensional violeta.", "accent": "a78bfa",
 	},
 	"victory_fx_sats": {
-		"name": "SATS BURST", "kind": "victory_fx", "price_sats": 21, "icon": "₿",
+		"name": "SATS BURST", "kind": "victory_fx", "price_sats": 0, "icon": "₿",
 		"description": "Celebración dorada inspirada en sats al escapar del laberinto.", "accent": "ffbd2e",
 	},
 }

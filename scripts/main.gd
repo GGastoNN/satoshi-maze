@@ -4,6 +4,15 @@ const StudioIntroFXScript = preload("res://scripts/studio_intro_fx.gd")
 
 var save := SaveManager.new()
 var payment: PaymentManager
+var ads: Node
+var pending_campaign_level := 0
+var last_result_moves := 0
+var last_result_elapsed := 0.0
+var last_result_orbs := 0
+var last_result_stars := 0
+var last_result_shortest := 0
+var last_result_perfect := false
+var last_result_improved := false
 var leaderboard: LeaderboardManager
 var screen_root: VBoxContainer
 var current_screen := "menu"
@@ -48,6 +57,9 @@ func _ready() -> void:
 	Localization.configure(save.language_override)
 	_build_shell()
 	_build_audio()
+	ads = preload("res://scripts/ad_manager.gd").new()
+	add_child(ads)
+	ads.transition_finished.connect(_on_ad_transition_finished)
 	payment = PaymentManager.new()
 	add_child(payment)
 	payment.status_changed.connect(_on_payment_status)
@@ -144,56 +156,49 @@ func show_studio_intro() -> void:
 
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_theme_stylebox_override("panel", _panel(Color(0.035, 0.055, 0.13, 0.82), Color(CYAN, 0.46), 32))
-	panel.custom_minimum_size = Vector2(0, 430)
+	panel.add_theme_stylebox_override("panel", _panel(Color(0.025, 0.045, 0.11, 0.86), Color("1674e8", 0.6), 32))
+	panel.custom_minimum_size = Vector2(0, 405)
 	panel.modulate = Color(1, 1, 1, 0)
 	screen_root.add_child(panel)
 
 	var margin := MarginContainer.new()
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	margin.add_theme_constant_override("margin_left", 28)
-	margin.add_theme_constant_override("margin_right", 28)
-	margin.add_theme_constant_override("margin_top", 28)
-	margin.add_theme_constant_override("margin_bottom", 28)
+	margin.add_theme_constant_override("margin_left", 18)
+	margin.add_theme_constant_override("margin_right", 18)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_bottom", 24)
 	panel.add_child(margin)
 
 	var stage := Control.new()
 	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stage.custom_minimum_size = Vector2(0, 360)
+	stage.custom_minimum_size = Vector2(0, 350)
 	margin.add_child(stage)
 
 	var studio_center := CenterContainer.new()
 	studio_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	studio_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	studio_center.modulate = Color(1, 1, 1, 0)
+	studio_center.scale = Vector2(0.78, 0.78)
 	stage.add_child(studio_center)
+
 	var studio_brand := VBoxContainer.new()
 	studio_brand.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	studio_brand.alignment = BoxContainer.ALIGNMENT_CENTER
-	studio_brand.add_theme_constant_override("separation", 5)
-	studio_center.modulate = Color(1, 1, 1, 0)
-	studio_center.position.y = 18.0
+	studio_brand.add_theme_constant_override("separation", 20)
 	studio_center.add_child(studio_brand)
 
-	var symbol := _label("✦", 62, GOLD)
-	symbol.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	symbol.modulate = Color(1, 1, 1, 0)
-	symbol.rotation = -0.16
-	studio_brand.add_child(symbol)
-	var illu := _label("ILLU", 78, TEXT)
-	illu.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	illu.add_theme_color_override("font_shadow_color", Color(CYAN, 0.62))
-	illu.add_theme_constant_override("shadow_offset_x", 4)
-	illu.add_theme_constant_override("shadow_offset_y", 4)
-	illu.modulate = Color(1, 1, 1, 0)
-	studio_brand.add_child(illu)
-	var entertainment := _label("E N T E R T A I N M E N T", 20, CYAN)
-	entertainment.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	entertainment.modulate = Color(1, 1, 1, 0)
-	studio_brand.add_child(entertainment)
-	var studio_tagline := _label(Localization.text("JUEGOS · LIGHTNING · ARCADE"), 13, Color(MUTED, 0.88))
-	studio_tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	studio_tagline.modulate = Color(1, 1, 1, 0)
-	studio_brand.add_child(studio_tagline)
+	var fixhome_logo := TextureRect.new()
+	fixhome_logo.texture = load("res://assets/images/fixhome_logo.png")
+	fixhome_logo.custom_minimum_size = Vector2(0, 245)
+	fixhome_logo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fixhome_logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fixhome_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	fixhome_logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	studio_brand.add_child(fixhome_logo)
+
+	var sponsor_tagline := _label("RÁPIDO  /  SEGURO  /  CONFIABLE", 16, Color("9acbff"))
+	sponsor_tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	studio_brand.add_child(sponsor_tagline)
 
 	var game_center := CenterContainer.new()
 	game_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -206,12 +211,12 @@ func show_studio_intro() -> void:
 	game_brand.alignment = BoxContainer.ALIGNMENT_CENTER
 	game_brand.add_theme_constant_override("separation", 7)
 	game_center.add_child(game_brand)
-	var presents := _label("ILLU ENTERTAINMENT · " + Localization.text("PRESENTA"), 13, Color(MUTED, 0.90))
+	var presents := _label("FIXHOME · " + Localization.text("PRESENTA"), 15, Color("80c0ff"))
 	presents.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	game_brand.add_child(presents)
 	var maze_title := _label("SATOSHI\nMAZE", 58, TEXT)
 	maze_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	maze_title.add_theme_color_override("font_shadow_color", Color(PINK, 0.42))
+	maze_title.add_theme_color_override("font_shadow_color", Color("1685ff", 0.45))
 	maze_title.add_theme_constant_override("shadow_offset_x", 4)
 	maze_title.add_theme_constant_override("shadow_offset_y", 4)
 	game_brand.add_child(maze_title)
@@ -225,56 +230,45 @@ func show_studio_intro() -> void:
 
 	_play(audio_intro)
 
-	# Background reveal and energy flash.
 	var fx_tween := create_tween()
 	intro_tweens.append(fx_tween)
 	fx_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	fx_tween.tween_property(intro_fx, "reveal", 1.0, 1.15)
-	fx_tween.tween_interval(0.38)
-	fx_tween.tween_property(intro_fx, "flash", 1.0, 0.10)
-	fx_tween.set_ease(Tween.EASE_IN_OUT)
-	fx_tween.tween_property(intro_fx, "flash", 0.0, 0.30)
-	fx_tween.tween_interval(1.20)
-	fx_tween.set_ease(Tween.EASE_IN)
+	fx_tween.tween_property(intro_fx, "reveal", 1.0, 1.10)
+	fx_tween.tween_interval(0.55)
+	fx_tween.tween_property(intro_fx, "flash", 0.70, 0.12)
+	fx_tween.tween_property(intro_fx, "flash", 0.0, 0.28)
+	fx_tween.tween_interval(1.35)
 	fx_tween.tween_property(intro_fx, "exit_amount", 1.0, 0.48)
 
-	# Frame / glass panel entrance.
 	var panel_tween := create_tween()
 	intro_tweens.append(panel_tween)
-	panel_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	panel_tween.tween_property(panel, "modulate", Color.WHITE, 0.34)
+	panel_tween.tween_property(panel, "modulate", Color.WHITE, 0.45)
 
-	# Studio identity arrives in layers rather than as one flat fade.
+	# Logo glides toward the viewer, glows, and dissolves into the game title.
 	var studio_tween := create_tween()
 	intro_tweens.append(studio_tween)
-	studio_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	studio_tween.tween_interval(0.12)
-	studio_tween.tween_property(studio_center, "modulate", Color.WHITE, 0.24)
-	studio_tween.parallel().tween_property(studio_center, "position", Vector2(0.0, 0.0), 0.40)
-	studio_tween.tween_property(symbol, "modulate", Color.WHITE, 0.18)
-	studio_tween.parallel().tween_property(symbol, "rotation", 0.0, 0.40)
-	studio_tween.tween_property(illu, "modulate", Color.WHITE, 0.30)
-	studio_tween.tween_property(entertainment, "modulate", Color.WHITE, 0.25)
-	studio_tween.tween_property(studio_tagline, "modulate", Color.WHITE, 0.23)
-	studio_tween.tween_interval(0.36)
-	studio_tween.set_ease(Tween.EASE_IN)
-	studio_tween.tween_property(studio_center, "modulate", Color(1, 1, 1, 0), 0.24)
-	studio_tween.parallel().tween_property(studio_center, "position", Vector2(0.0, -14.0), 0.24)
+	studio_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	studio_tween.tween_interval(0.16)
+	studio_tween.tween_property(studio_center, "modulate", Color.WHITE, 0.52)
+	studio_tween.parallel().tween_property(studio_center, "scale", Vector2.ONE, 0.92)
+	studio_tween.tween_interval(0.74)
+	studio_tween.set_ease(Tween.EASE_IN_OUT)
+	studio_tween.tween_property(studio_center, "scale", Vector2(1.055, 1.055), 0.44)
+	studio_tween.tween_property(studio_center, "modulate", Color(1, 1, 1, 0), 0.30)
 
-	# Satoshi Maze follows immediately after the ILLU flash.
 	var game_tween := create_tween()
 	intro_tweens.append(game_tween)
-	game_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	game_tween.tween_interval(2.02)
-	game_tween.tween_property(game_center, "modulate", Color.WHITE, 0.30)
-	game_tween.parallel().tween_property(game_center, "position", Vector2(0.0, 0.0), 0.40)
-	game_tween.tween_interval(0.65)
+	game_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	game_tween.tween_interval(2.15)
+	game_tween.tween_property(game_center, "modulate", Color.WHITE, 0.36)
+	game_tween.parallel().tween_property(game_center, "position", Vector2.ZERO, 0.44)
+	game_tween.tween_interval(0.72)
 	game_tween.set_ease(Tween.EASE_IN)
-	game_tween.tween_property(game_center, "modulate", Color(1, 1, 1, 0), 0.34)
+	game_tween.tween_property(game_center, "modulate", Color(1, 1, 1, 0), 0.36)
 
 	intro_tween = create_tween()
-	intro_tween.tween_interval(3.30)
-	intro_tween.tween_property(panel, "modulate", Color(1, 1, 1, 0), 0.32)
+	intro_tween.tween_interval(3.60)
+	intro_tween.tween_property(panel, "modulate", Color(1, 1, 1, 0), 0.28)
 	intro_tween.tween_callback(Callable(self, "_intro_complete"))
 
 func _intro_complete() -> void:
@@ -308,7 +302,7 @@ func show_menu(animate_entry: bool = false) -> void:
 	game_active = false
 	_clear_screen()
 	_spacer(16)
-	var badge := _label("⚡  LIGHTNING ARCADE  ·  SEASON 01", 15, GOLD)
+	var badge := _label("✦  NEON ARCADE  ·  SEASON 01", 15, GOLD)
 	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	screen_root.add_child(badge)
 	var title := _label("SATOSHI\nMAZE", 59, TEXT)
@@ -317,7 +311,7 @@ func show_menu(animate_entry: bool = false) -> void:
 	title.add_theme_constant_override("shadow_offset_x", 3)
 	title.add_theme_constant_override("shadow_offset_y", 3)
 	screen_root.add_child(title)
-	var subtitle := _label("100 laberintos · retos globales · Ghost Run · colección premium", 17, MUTED)
+	var subtitle := _label("100 laberintos gratis · retos globales · Ghost Run", 17, MUTED)
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	screen_root.add_child(subtitle)
@@ -331,7 +325,7 @@ func show_menu(animate_entry: bool = false) -> void:
 	row.add_child(_button("DAILY", func(): show_daily(), false, GOLD))
 	row.add_child(_button("INFINITE", func(): start_infinite(1), false, PINK))
 	screen_root.add_child(row)
-	screen_root.add_child(_button("TIENDA · SKINS · TRAILS · TEMAS", func(): show_store(), true, GOLD))
+	screen_root.add_child(_button("PERSONALIZACIÓN GRATIS", func(): show_store(), true, GOLD))
 	var row2 := HBoxContainer.new()
 	row2.add_theme_constant_override("separation", 10)
 	row2.add_child(_button("COLECCIÓN", func(): show_collection(), false, CYAN))
@@ -363,7 +357,7 @@ func show_levels() -> void:
 	game_active = false
 	_clear_screen()
 	_add_topbar("CAMPAÑA", func(): show_menu())
-	var info := _label("Los niveles normales son gratis. Solo los Boss Maze requieren pago y la campaña debe completarse estrictamente en orden.", 15, MUTED)
+	var info := _label("100 niveles gratuitos. Avanzá en orden: cada nivel se habilita después de la pausa publicitaria del anterior.", 15, MUTED)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	screen_root.add_child(info)
@@ -390,14 +384,14 @@ func show_levels() -> void:
 		var completed_in_sequence: bool = lvl <= progress
 		var playable: bool = save.can_play_level(lvl)
 		var is_next: bool = lvl == next_level and lvl <= AppConfig.TOTAL_LEVELS
-		var boss_needs_payment: bool = is_next and boss and not save.has_boss_access(lvl)
+		var boss_needs_payment: bool = false
 		var stars: int = save.get_level_stars(lvl)
 		var marker: String = "★".repeat(stars) + "☆".repeat(3 - stars) if stars > 0 else Localization.text("COMPLETADO")
 		var bottom: String = ""
 		if completed_in_sequence:
 			bottom = marker
 		elif boss_needs_payment:
-			bottom = "⚡ %d SATS" % AppConfig.boss_price_sats(lvl)
+			bottom = "▶ GRATIS"
 		elif is_next and playable:
 			bottom = "▶ " + Localization.text("DISPONIBLE")
 		else:
@@ -410,7 +404,7 @@ func show_levels() -> void:
 		b.add_theme_font_size_override("font_size", 13)
 		# Future levels cannot be activated. The current unpaid Boss remains clickable
 		# only so it can open its Lightning purchase screen.
-		b.disabled = not (playable or boss_needs_payment)
+		b.disabled = not playable
 		grid.add_child(b)
 
 func show_daily() -> void:
@@ -454,20 +448,25 @@ func start_infinite(round_number: int) -> void:
 func _select_level(level: int) -> void:
 	if save.can_play_level(level):
 		start_level(level)
-		return
-	# Only the immediate next Boss may open a payment gate.
-	if save.is_next_campaign_level(level) and AppConfig.is_boss_level(level) and not save.has_boss_access(level):
-		show_purchase_product("level_%d" % level)
 
 func start_level(level: int) -> void:
-	# Defense in depth: even direct calls cannot bypass sequential campaign rules.
-	if not save.can_play_level(level):
-		if save.is_next_campaign_level(level) and AppConfig.is_boss_level(level) and not save.has_boss_access(level):
-			show_purchase_product("level_%d" % level)
-		else:
-			show_levels()
+	if pending_campaign_level != 0 or not save.can_play_level(level):
+		show_levels()
 		return
 	_start_maze(MazeGenerator.generate(level), level, str(level), "campaign", Localization.f("maze_number", [level]))
+
+func _on_ad_transition_finished() -> void:
+	if pending_campaign_level == 0:
+		return
+	var cleared := pending_campaign_level
+	pending_campaign_level = 0
+	save.confirm_campaign_level(cleared)
+	if current_screen == "result":
+		show_result_after_ad()
+
+func show_result_after_ad() -> void:
+	# The result screen is refreshed only after the ad closes or fails to load.
+	show_result(last_result_moves, last_result_elapsed, last_result_orbs, last_result_stars, last_result_shortest, last_result_perfect, last_result_improved)
 
 func _start_maze(maze: Dictionary, level_for_palette: int, run_key: String, mode: String, title_text: String) -> void:
 	current_screen = "game"
@@ -594,12 +593,6 @@ func show_store(filter: String = "") -> void:
 			section_label.add_theme_color_override("font_outline_color", Color("050814"))
 			list.add_child(section_label)
 		list.add_child(_product_card(product))
-	if not save.purchase_history.is_empty():
-		list.add_child(_label("ÚLTIMAS COMPRAS", 19, CYAN))
-		for purchase in save.purchase_history.slice(0, mini(5, save.purchase_history.size())):
-			var history_product: Dictionary = ProductCatalog.get_product(str(purchase.get("product_id", "")))
-			var history_name: String = str(history_product.get("name", purchase.get("name", "Compra")))
-			list.add_child(_label(Localization.f("purchase_row", [history_name, int(purchase.get("amount_sats", 0))]), 14, MUTED))
 
 func _store_filter_title(filter_id: String) -> String:
 	var language: String = Localization.current_language()
@@ -676,10 +669,14 @@ func _product_card(product: Dictionary) -> Control:
 			action = _button("ADQUIRIDO", Callable(self, "_noop"), false, GREEN)
 			action.disabled = true
 	else:
-		action = _button("%d SATS" % int(product.price_sats), Callable(self, "show_purchase_product").bind(product_id), false, GOLD)
+		action = _button("GRATIS", Callable(self, "_get_free_product").bind(product_id), false, GOLD)
 	action.custom_minimum_size = Vector2(132, 54)
 	row.add_child(action)
 	return panel
+
+func _get_free_product(product_id: String) -> void:
+	save.grant_product(product_id)
+	show_store()
 
 func _equip_from_store(product_id: String) -> void:
 	if save.equip_product(product_id):
@@ -841,6 +838,8 @@ func _toggle_haptics() -> void:
 	show_settings()
 
 func show_purchase_product(product_id: String) -> void:
+	_get_free_product(product_id)
+	return
 	current_product = ProductCatalog.get_product(product_id)
 	if current_product.is_empty():
 		return
@@ -921,14 +920,29 @@ func _on_goal_reached(moves: int, orbs: int) -> void:
 	if moves <= int(ceil(float(shortest) * 1.25)): stars += 1
 	if orbs == 3: stars += 1
 	var perfect := board.bump_count == 0
-	var result := save.record_result(current_run_key, moves, elapsed, stars, shortest, orbs, board.get_run_path(), current_mode == "daily", current_mode == "campaign")
+	var result := save.record_result(current_run_key, moves, elapsed, stars, shortest, orbs, board.get_run_path(), current_mode == "daily", false)
 	if current_mode in ["daily", "weekly"]:
 		save.record_challenge(current_run_key, moves, elapsed, efficiency)
 		leaderboard.submit_score(current_run_key, "RUNNER-" + save.install_id.substr(0, 6).to_upper(), save.install_id, moves, elapsed, efficiency, board.get_run_path())
 	if current_mode == "infinite":
 		save.record_infinite_round(infinite_round)
 	_play(audio_win)
-	show_result(moves, elapsed, orbs, stars, shortest, perfect, bool(result.improved))
+	last_result_moves = moves
+	last_result_elapsed = elapsed
+	last_result_orbs = orbs
+	last_result_stars = stars
+	last_result_shortest = shortest
+	last_result_perfect = perfect
+	last_result_improved = bool(result.improved)
+	if current_mode == "campaign" and not save.is_level_completed(current_level):
+		pending_campaign_level = current_level
+		current_screen = "result"
+		game_active = false
+		_clear_screen()
+		screen_root.add_child(_label("NIVEL SUPERADO · PREPARANDO SIGUIENTE NIVEL", 21, CYAN))
+		ads.show_level_interstitial()
+	else:
+		show_result(moves, elapsed, orbs, stars, shortest, perfect, bool(result.improved))
 
 func show_result(moves: int, elapsed: float, orbs: int, stars: int, shortest: int, perfect: bool, improved: bool) -> void:
 	current_screen = "result"
@@ -962,8 +976,8 @@ func show_result(moves: int, elapsed: float, orbs: int, stars: int, shortest: in
 	_spacer(12)
 	if current_mode == "campaign" and current_level < AppConfig.TOTAL_LEVELS:
 		var next := current_level + 1
-		var next_is_paid_boss: bool = AppConfig.is_boss_level(next) and not save.has_boss_access(next)
-		var next_text: String = ("BOSS · %d SATS" % AppConfig.boss_price_sats(next)) if next_is_paid_boss else Localization.text("SIGUIENTE NIVEL")
+		var next_is_paid_boss: bool = false
+		var next_text: String = Localization.text("SIGUIENTE NIVEL")
 		screen_root.add_child(_button(next_text, func(): _select_level(next), true, GOLD if next_is_paid_boss else CYAN))
 	elif current_mode == "infinite":
 		screen_root.add_child(_button("CONTINUAR · RUN %02d" % (infinite_round + 1), func(): start_infinite(infinite_round + 1), true, PINK))

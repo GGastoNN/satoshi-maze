@@ -44,7 +44,6 @@ func load_data() -> void:
 		return
 	var data: Dictionary = parsed
 	_apply_data(data)
-	_migrate_campaign_completion()
 	_ensure_install_id()
 	if source_path != AppConfig.SAVE_PATH:
 		save_data()
@@ -160,24 +159,19 @@ func next_campaign_level() -> int:
 func is_next_campaign_level(level: int) -> bool:
 	return level == next_campaign_level() and level <= AppConfig.TOTAL_LEVELS
 
-func has_boss_access(level: int) -> bool:
-	if not AppConfig.is_boss_level(level):
-		return true
-	# Honor old Maze Pass purchases, but never let them bypass sequential progress.
-	return has_product("full_pass") or bool(purchased_levels.get(str(level), false))
+func has_boss_access(_level: int) -> bool:
+	return true
 
 func can_play_level(level: int) -> bool:
 	if level < 1 or level > AppConfig.TOTAL_LEVELS:
 		return false
-	var prefix := completed_campaign_prefix()
-	# Completed contiguous levels remain replayable.
-	if level <= prefix:
-		return true
-	# The only new playable level is the immediate next one.
-	if level != prefix + 1:
-		return false
-	# Normal levels are free. Bosses additionally require their purchase entitlement.
-	return has_boss_access(level)
+	return level <= completed_campaign_prefix() + 1
+
+func confirm_campaign_level(level: int) -> void:
+	if level == completed_campaign_prefix() + 1:
+		campaign_completed[str(level)] = true
+		total_stars += int(best_stars.get(str(level), 0))
+		save_data()
 
 func is_unlocked(level: int) -> bool:
 	# Compatibility alias used by older UI code.
@@ -197,7 +191,7 @@ func unlock_all_levels() -> void:
 	save_data()
 
 func has_product(product_id: String) -> bool:
-	return bool(owned_products.get(product_id, false))
+	return true
 
 func owns_product_id(product_id: String) -> bool:
 	var product := ProductCatalog.get_product(product_id)
@@ -237,7 +231,7 @@ func grant_product(product_id: String, payment_id := "", amount_sats := 0) -> vo
 func can_equip(product_id: String) -> bool:
 	if product_id in ["default", "auto"]:
 		return true
-	return has_product(product_id)
+	return true
 
 func equip_product(product_id: String) -> bool:
 	var product := ProductCatalog.get_product(product_id)

@@ -2,7 +2,7 @@ extends RefCounted
 class_name AppConfig
 
 const GAME_NAME := "Satoshi Maze"
-const VERSION := "5.5.0"
+const VERSION := "5.6.0"
 const TOTAL_LEVELS := 100
 
 # Solo los Boss Maze de campaña requieren pago. El resto de niveles es gratuito,
