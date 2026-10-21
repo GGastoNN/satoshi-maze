@@ -1,4 +1,4 @@
-name: Android Play Store AAB
+name: Android Play Store AAB + APK
 
 on:
   workflow_dispatch:
@@ -79,7 +79,7 @@ jobs:
           chmod +x android/build/gradlew
           echo 'Gradle Android build template installed.'
 
-      - name: Export AAB
+      - name: Export signed AAB and APK
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -92,16 +92,40 @@ jobs:
           test -n "$KEYSTORE_PASSWORD" || { echo 'Missing ANDROID_KEYSTORE_PASSWORD'; exit 1; }
           test -n "$KEY_ALIAS" || { echo 'Missing ANDROID_KEY_ALIAS'; exit 1; }
           test -n "$KEY_PASSWORD" || { echo 'Missing ANDROID_KEY_PASSWORD'; exit 1; }
-          echo "$KEYSTORE_BASE64" | base64 -d > /tmp/release.keystore
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > /tmp/release.keystore
           chmod 600 /tmp/release.keystore
           export GODOT_ANDROID_KEYSTORE_RELEASE_PATH=/tmp/release.keystore
           export GODOT_ANDROID_KEYSTORE_RELEASE_USER="$KEY_ALIAS"
           export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$KEYSTORE_PASSWORD"
           mkdir -p build
+
+          # Existing export preset is configured for AAB (export_format=1).
           godot --headless --path . --export-release Android build/SatoshiMaze.aab
           test -s build/SatoshiMaze.aab
 
-      - uses: actions/upload-artifact@v4
+          # Switch only the local export preset to APK (export_format=0).
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          p = Path('export_presets.cfg')
+          data = p.read_text(encoding='utf-8')
+          before = 'gradle_build/export_format=1'
+          assert data.count(before) == 1, 'Expected one Android AAB export format setting'
+          p.write_text(data.replace(before, 'gradle_build/export_format=0'), encoding='utf-8')
+          PYCODE
+          godot --headless --path . --export-release Android build/SatoshiMaze.apk
+          test -s build/SatoshiMaze.apk
+          echo 'AAB and APK exported successfully.'
+
+      - name: Upload AAB for Play Store
+        uses: actions/upload-artifact@v4
         with:
           name: SatoshiMaze-PlayStore-AAB
           path: build/SatoshiMaze.aab
+          if-no-files-found: error
+
+      - name: Upload APK for direct installation
+        uses: actions/upload-artifact@v4
+        with:
+          name: SatoshiMaze-Android-APK
+          path: build/SatoshiMaze.apk
+          if-no-files-found: error
