@@ -77,7 +77,11 @@ jobs:
           printf '%s\n' '4.7.2.stable' > android/.build_version
           test -f android/build/gradlew || { echo 'Gradle template missing android/build/gradlew'; exit 1; }
           chmod +x android/build/gradlew
-          echo 'Gradle Android build template installed.'
+          # Exclude Android Gradle files from Godot's asset scanner.
+          touch android/build/.gdignore
+          # Clear erroneous Godot import sidecars that break Android resource merging.
+          find android/build -type f -name '*.import' -delete
+          echo 'Gradle template installed and protected from Godot resource import.'
 
       - name: Export signed AAB and APK
         env:
@@ -99,11 +103,11 @@ jobs:
           export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$KEYSTORE_PASSWORD"
           mkdir -p build
 
-          # Existing export preset is configured for AAB (export_format=1).
+          # Export AAB for Play Store.
           godot --headless --path . --export-release Android build/SatoshiMaze.aab
           test -s build/SatoshiMaze.aab
 
-          # Switch only the local export preset to APK (export_format=0).
+          # Switch the local preset from AAB to APK.
           python3 - <<'PYCODE'
           from pathlib import Path
           p = Path('export_presets.cfg')
