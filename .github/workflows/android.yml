@@ -23,7 +23,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Use a writable SDK instead of the system SDK in /usr/local.
           SDK="$HOME/android-sdk"
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
@@ -66,11 +65,19 @@ jobs:
           export/android/java_sdk_path = "${JAVA_HOME}"
           SETTINGS
 
-      - name: Import and install Android build template
+      - name: Import project and install Gradle Android template
         shell: bash
         run: |
+          set -euo pipefail
           godot --headless --path . --import --quit
-          godot --headless --path . --install-android-build-template --quit
+          TEMPLATE="$HOME/.local/share/godot/export_templates/4.7.2.stable/android_source.zip"
+          test -s "$TEMPLATE" || { echo 'Missing android_source.zip'; exit 1; }
+          mkdir -p android/build
+          unzip -oq "$TEMPLATE" -d android/build
+          printf '%s\n' '4.7.2.stable' > android/.build_version
+          test -f android/build/gradlew || { echo 'Gradle template missing android/build/gradlew'; exit 1; }
+          chmod +x android/build/gradlew
+          echo 'Gradle Android build template installed.'
 
       - name: Export AAB
         env:
@@ -84,7 +91,9 @@ jobs:
           test -n "$KEYSTORE_BASE64" || { echo 'Missing ANDROID_KEYSTORE_BASE64'; exit 1; }
           test -n "$KEYSTORE_PASSWORD" || { echo 'Missing ANDROID_KEYSTORE_PASSWORD'; exit 1; }
           test -n "$KEY_ALIAS" || { echo 'Missing ANDROID_KEY_ALIAS'; exit 1; }
+          test -n "$KEY_PASSWORD" || { echo 'Missing ANDROID_KEY_PASSWORD'; exit 1; }
           echo "$KEYSTORE_BASE64" | base64 -d > /tmp/release.keystore
+          chmod 600 /tmp/release.keystore
           export GODOT_ANDROID_KEYSTORE_RELEASE_PATH=/tmp/release.keystore
           export GODOT_ANDROID_KEYSTORE_RELEASE_USER="$KEY_ALIAS"
           export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$KEYSTORE_PASSWORD"
